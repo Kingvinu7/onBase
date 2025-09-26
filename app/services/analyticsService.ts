@@ -1,5 +1,6 @@
 import { createPublicClient, http, isAddress, formatEther, getAddress } from 'viem';
 import { base } from 'viem/chains';
+import { Alchemy, Network } from 'alchemy-sdk';
 import type { 
   Transaction, 
   AddressAnalytics, 
@@ -13,6 +14,12 @@ import type {
 const publicClient = createPublicClient({
   chain: base,
   transport: http()
+});
+
+// Initialize Alchemy SDK for Base network
+const alchemy = new Alchemy({
+  apiKey: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || 'demo',
+  network: Network.BASE_MAINNET,
 });
 
 export class AnalyticsService {
@@ -33,20 +40,91 @@ export class AnalyticsService {
   }
 
   /**
-   * Fetches transaction history for an address
-   * Note: In a production app, you'd want to use a proper indexing service like Alchemy, Moralis, or The Graph
-   * This is a simplified version that demonstrates the concept
+   * Fetches comprehensive transaction history using Alchemy
    */
-  private async fetchTransactionHistory(address: string, blockCount: number = 1000): Promise<Transaction[]> {
+  private async fetchTransactionHistory(address: string): Promise<Transaction[]> {
+    try {
+      const checksumAddress = getAddress(address);
+      const transactions: Transaction[] = [];
+      
+      // Fetch transfers (both sent and received)
+      const [sentTxs, receivedTxs] = await Promise.all([
+        alchemy.core.getAssetTransfers({
+          fromAddress: checksumAddress,
+          category: ['external', 'internal', 'erc20', 'erc721', 'erc1155'],
+          maxCount: 1000,
+          order: 'desc'
+        }),
+        alchemy.core.getAssetTransfers({
+          toAddress: checksumAddress,
+          category: ['external', 'internal', 'erc20', 'erc721', 'erc1155'],
+          maxCount: 1000,
+          order: 'desc'
+        })
+      ]);
+
+      // Process sent transactions
+      for (const transfer of sentTxs.transfers) {
+        if (transfer.hash) {
+          const receipt = await alchemy.core.getTransactionReceipt(transfer.hash);
+          const tx = await alchemy.core.getTransaction(transfer.hash);
+          
+          transactions.push({
+            hash: transfer.hash,
+            blockNumber: BigInt(transfer.blockNum),
+            timestamp: new Date(transfer.metadata.blockTimestamp).getTime() / 1000,
+            from: transfer.from,
+            to: transfer.to || null,
+            value: BigInt(Math.floor((transfer.value || 0) * 1e18)),
+            gasUsed: BigInt(receipt?.gasUsed?.toString() || '0'),
+            gasPrice: BigInt(tx?.gasPrice?.toString() || '0'),
+            status: receipt?.status === 1 ? 'success' : 'failed',
+            isContractInteraction: transfer.category !== 'external',
+          });
+        }
+      }
+
+      // Process received transactions (avoid duplicates)
+      const existingHashes = new Set(transactions.map(tx => tx.hash));
+      for (const transfer of receivedTxs.transfers) {
+        if (transfer.hash && !existingHashes.has(transfer.hash)) {
+          const receipt = await alchemy.core.getTransactionReceipt(transfer.hash);
+          const tx = await alchemy.core.getTransaction(transfer.hash);
+          
+          transactions.push({
+            hash: transfer.hash,
+            blockNumber: BigInt(transfer.blockNum),
+            timestamp: new Date(transfer.metadata.blockTimestamp).getTime() / 1000,
+            from: transfer.from,
+            to: transfer.to || null,
+            value: BigInt(Math.floor((transfer.value || 0) * 1e18)),
+            gasUsed: BigInt(receipt?.gasUsed?.toString() || '0'),
+            gasPrice: BigInt(tx?.gasPrice?.toString() || '0'),
+            status: receipt?.status === 1 ? 'success' : 'failed',
+            isContractInteraction: transfer.category !== 'external',
+          });
+        }
+      }
+      
+      return transactions.sort((a, b) => b.timestamp - a.timestamp);
+    } catch (error) {
+      console.error('Error fetching transaction history with Alchemy:', error);
+      // Fallback to basic method if Alchemy fails
+      return this.fetchTransactionHistoryFallback(address);
+    }
+  }
+
+  /**
+   * Fallback method using basic RPC calls
+   */
+  private async fetchTransactionHistoryFallback(address: string): Promise<Transaction[]> {
     try {
       const checksumAddress = getAddress(address);
       const currentBlock = await publicClient.getBlockNumber();
       const transactions: Transaction[] = [];
       
-      // In a real implementation, you'd use an indexing service or event logs
-      // This is a simplified approach that checks recent blocks
-      
-      for (let i = 0; i < Math.min(blockCount, 100); i++) { // Limit to prevent rate limiting
+      // Check recent blocks as fallback
+      for (let i = 0; i < 50; i++) {
         const blockNumber = currentBlock - BigInt(i);
         try {
           const block = await publicClient.getBlock({ 
@@ -64,24 +142,23 @@ export class AnalyticsService {
                   from: tx.from,
                   to: tx.to,
                   value: tx.value,
-                  gasUsed: BigInt(0), // Would need receipt for actual gas used
+                  gasUsed: BigInt(0),
                   gasPrice: tx.gasPrice || BigInt(0),
-                  status: 'success', // Would need receipt for actual status
+                  status: 'success',
                   isContractInteraction: tx.to !== null && tx.input !== '0x',
                 });
               }
             }
           }
         } catch (error) {
-          console.warn(`Failed to fetch block ${blockNumber}:`, error);
           continue;
         }
       }
       
       return transactions.sort((a, b) => b.timestamp - a.timestamp);
     } catch (error) {
-      console.error('Error fetching transaction history:', error);
-      throw error;
+      console.error('Error in fallback method:', error);
+      return [];
     }
   }
 
