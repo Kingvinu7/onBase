@@ -1,28 +1,42 @@
 "use client";
-import { useEffect } from "react";
-import Image from "next/image";
+import { useEffect, useState } from "react";
 import { Wallet } from "@coinbase/onchainkit/wallet";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
-// import { useQuickAuth } from "@coinbase/onchainkit/minikit";
+import { AddressInput } from "./components/AddressInput";
+import { AnalyticsDashboard } from "./components/AnalyticsDashboard";
+import { AnalyticsService } from "./services/analyticsService";
+import { mockAnalyticsData } from "./utils/mockData";
+import type { AddressAnalytics, AnalyticsError } from "./types/analytics";
 import styles from "./page.module.css";
 
 export default function Home() {
-  // If you need to verify the user's identity, you can use the useQuickAuth hook.
-  // This hook will verify the user's signature and return the user's FID. You can update
-  // this to meet your needs. See the /app/api/auth/route.ts file for more details.
-  // Note: If you don't need to verify the user's identity, you can get their FID and other user data
-  // via `useMiniKit().context?.user`.
-  // const { data, isLoading, error } = useQuickAuth<{
-  //   userFid: string;
-  // }>("/api/auth");
-
   const { setMiniAppReady, isMiniAppReady } = useMiniKit();
+  const [analytics, setAnalytics] = useState<AddressAnalytics | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isMiniAppReady) {
       setMiniAppReady();
     }
   }, [setMiniAppReady, isMiniAppReady]);
+
+  const handleAnalyze = async (address: string) => {
+    setLoading(true);
+    setError(null);
+    setAnalytics(null);
+
+    try {
+      const analyticsService = AnalyticsService.getInstance();
+      const result = await analyticsService.analyzeAddress(address);
+      setAnalytics(result);
+    } catch (err) {
+      const error = err as AnalyticsError;
+      setError(error.message || 'Failed to analyze address');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className={styles.container}>
@@ -31,51 +45,77 @@ export default function Home() {
       </header>
 
       <div className={styles.content}>
-        <Image
-          priority
-          src="/sphere.svg"
-          alt="Sphere"
-          width={200}
-          height={200}
-        />
-        <h1 className={styles.title}>MiniKit</h1>
+        {!analytics && !loading && (
+          <div className={styles.hero}>
+            <div className={styles.heroIcon}>📊</div>
+            <h1 className={styles.title}>Base Analytics</h1>
+            <p className={styles.description}>
+              Discover comprehensive insights about any Base address including transaction history, 
+              activity patterns, streaks, and more.
+            </p>
+          </div>
+        )}
 
-        <p>
-          Get started by editing <code>app/page.tsx</code>
-        </p>
+        <div className={styles.inputSection}>
+          <AddressInput 
+            onAnalyze={handleAnalyze}
+            loading={loading}
+          />
+          
+          <div className={styles.demoSection}>
+            <button 
+              onClick={() => setAnalytics(mockAnalyticsData)}
+              className={styles.demoButton}
+              disabled={loading}
+            >
+              View Demo Analytics
+            </button>
+          </div>
+          
+          {error && (
+            <div className={styles.error}>
+              <span className={styles.errorIcon}>⚠️</span>
+              {error}
+            </div>
+          )}
+        </div>
 
-        <h2 className={styles.componentsTitle}>Explore Components</h2>
+        {(loading || analytics) && (
+          <div className={styles.dashboardSection}>
+            <AnalyticsDashboard 
+              analytics={analytics!}
+              loading={loading}
+            />
+          </div>
+        )}
 
-        <ul className={styles.components}>
-          {[
-            {
-              name: "Transaction",
-              url: "https://docs.base.org/onchainkit/transaction/transaction",
-            },
-            {
-              name: "Swap",
-              url: "https://docs.base.org/onchainkit/swap/swap",
-            },
-            {
-              name: "Checkout",
-              url: "https://docs.base.org/onchainkit/checkout/checkout",
-            },
-            {
-              name: "Wallet",
-              url: "https://docs.base.org/onchainkit/wallet/wallet",
-            },
-            {
-              name: "Identity",
-              url: "https://docs.base.org/onchainkit/identity/identity",
-            },
-          ].map((component) => (
-            <li key={component.name}>
-              <a target="_blank" rel="noreferrer" href={component.url}>
-                {component.name}
-              </a>
-            </li>
-          ))}
-        </ul>
+        {!analytics && !loading && !error && (
+          <div className={styles.features}>
+            <h2 className={styles.featuresTitle}>What you&apos;ll discover</h2>
+            <div className={styles.featureGrid}>
+              <div className={styles.feature}>
+                <div className={styles.featureIcon}>💰</div>
+                <h3>Balance & Volume</h3>
+                <p>Current ETH balance and total value transferred</p>
+              </div>
+              <div className={styles.feature}>
+                <div className={styles.featureIcon}>📈</div>
+                <h3>Activity Patterns</h3>
+                <p>Daily and monthly activity breakdown with trends</p>
+              </div>
+              <div className={styles.feature}>
+                <div className={styles.featureIcon}>🔥</div>
+                <h3>Streaks & Consistency</h3>
+                <p>Activity streaks and engagement patterns</p>
+              </div>
+              <div className={styles.feature}>
+                <div className={styles.featureIcon}>🤝</div>
+                <h3>Network Analysis</h3>
+                <p>Unique interactions and contract usage</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
