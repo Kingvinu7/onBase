@@ -10,6 +10,10 @@ import type {
   AnalyticsError 
 } from '../types/analytics';
 
+// Basescan API configuration
+const BASESCAN_API_URL = 'https://api.basescan.org/api';
+const BASESCAN_API_KEY = process.env.NEXT_PUBLIC_BASESCAN_API_KEY || 'YourApiKeyToken';
+
 // Create a public client for Base network
 const publicClient = createPublicClient({
   chain: base,
@@ -73,6 +77,111 @@ export class AnalyticsService {
   }
 
   /**
+   * Fetches transaction history using Basescan API
+   */
+  private async fetchTransactionHistoryBasescan(address: string): Promise<Transaction[]> {
+    try {
+      const checksumAddress = getAddress(address);
+      console.log(`🔍 Fetching transaction history from Basescan for: ${checksumAddress}`);
+      
+      // Fetch normal transactions
+      const normalTxUrl = `${BASESCAN_API_URL}?module=account&action=txlist&address=${checksumAddress}&startblock=0&endblock=99999999&page=1&offset=1000&sort=desc&apikey=${BASESCAN_API_KEY}`;
+      
+      // Fetch internal transactions
+      const internalTxUrl = `${BASESCAN_API_URL}?module=account&action=txlistinternal&address=${checksumAddress}&startblock=0&endblock=99999999&page=1&offset=1000&sort=desc&apikey=${BASESCAN_API_KEY}`;
+      
+      // Fetch ERC20 token transfers
+      const erc20TxUrl = `${BASESCAN_API_URL}?module=account&action=tokentx&address=${checksumAddress}&startblock=0&endblock=99999999&page=1&offset=1000&sort=desc&apikey=${BASESCAN_API_KEY}`;
+
+      const [normalResponse, internalResponse, erc20Response] = await Promise.all([
+        fetch(normalTxUrl),
+        fetch(internalTxUrl),
+        fetch(erc20TxUrl)
+      ]);
+
+      const [normalData, internalData, erc20Data] = await Promise.all([
+        normalResponse.json(),
+        internalResponse.json(),
+        erc20Response.json()
+      ]);
+
+      console.log(`📊 Basescan data:`, {
+        normal: normalData.result?.length || 0,
+        internal: internalData.result?.length || 0,
+        erc20: erc20Data.result?.length || 0
+      });
+
+      const transactions: Transaction[] = [];
+
+      // Process normal transactions
+      if (normalData.status === '1' && normalData.result) {
+        for (const tx of normalData.result) {
+          transactions.push({
+            hash: tx.hash,
+            blockNumber: BigInt(tx.blockNumber),
+            timestamp: parseInt(tx.timeStamp),
+            from: tx.from,
+            to: tx.to || null,
+            value: BigInt(tx.value),
+            gasUsed: BigInt(tx.gasUsed),
+            gasPrice: BigInt(tx.gasPrice),
+            status: tx.txreceipt_status === '1' ? 'success' : 'failed',
+            isContractInteraction: tx.input !== '0x',
+          });
+        }
+      }
+
+      // Process internal transactions
+      if (internalData.status === '1' && internalData.result) {
+        for (const tx of internalData.result) {
+          // Avoid duplicates
+          if (!transactions.find(t => t.hash === tx.hash)) {
+            transactions.push({
+              hash: tx.hash,
+              blockNumber: BigInt(tx.blockNumber),
+              timestamp: parseInt(tx.timeStamp),
+              from: tx.from,
+              to: tx.to || null,
+              value: BigInt(tx.value),
+              gasUsed: BigInt(tx.gasUsed || '0'),
+              gasPrice: BigInt('0'), // Internal txs don't have gas price
+              status: 'success',
+              isContractInteraction: true,
+            });
+          }
+        }
+      }
+
+      // Process ERC20 token transfers (add as separate transactions)
+      if (erc20Data.status === '1' && erc20Data.result) {
+        for (const tx of erc20Data.result) {
+          // Only add if not already present
+          if (!transactions.find(t => t.hash === tx.hash)) {
+            transactions.push({
+              hash: tx.hash,
+              blockNumber: BigInt(tx.blockNumber),
+              timestamp: parseInt(tx.timeStamp),
+              from: tx.from,
+              to: tx.to || null,
+              value: BigInt(0), // ERC20 transfers don't affect ETH balance
+              gasUsed: BigInt(tx.gasUsed || '0'),
+              gasPrice: BigInt(tx.gasPrice || '0'),
+              status: 'success',
+              isContractInteraction: true,
+            });
+          }
+        }
+      }
+
+      console.log(`✅ Basescan: Found ${transactions.length} total transactions`);
+      return transactions.sort((a, b) => b.timestamp - a.timestamp);
+    } catch (error) {
+      console.error('❌ Error fetching from Basescan:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Simple test method to check if Alchemy is working
    */
   async testAlchemyConnection(address: string): Promise<any> {
@@ -101,78 +210,18 @@ export class AnalyticsService {
    */
   private async fetchTransactionHistory(address: string): Promise<Transaction[]> {
     try {
-      const checksumAddress = getAddress(address);
-      console.log(`🔍 Fetching transaction history for: ${checksumAddress}`);
-      const transactions: Transaction[] = [];
+      // Try Basescan first (more reliable for Base network)
+      console.log('🎯 Using Basescan as primary data source...');
+      return await this.fetchTransactionHistoryBasescan(address);
+    } catch (basescanError) {
+      console.warn('⚠️ Basescan failed, trying Alchemy...', basescanError);
       
-      // Fetch transfers (both sent and received)
-      // Note: Base network doesn't support 'internal' category
-      console.log('📡 Calling Alchemy getAssetTransfers...');
-      const [sentTxs, receivedTxs] = await Promise.all([
-        alchemy.core.getAssetTransfers({
-          fromAddress: checksumAddress,
-          category: ['external', 'erc20', 'erc721', 'erc1155'],
-          maxCount: 1000,
-          order: 'desc'
-        }),
-        alchemy.core.getAssetTransfers({
-          toAddress: checksumAddress,
-          category: ['external', 'erc20', 'erc721', 'erc1155'],
-          maxCount: 1000,
-          order: 'desc'
-        })
-      ]);
-
-      // Process sent transactions - simplified approach
-      console.log(`📤 Processing ${sentTxs.transfers.length} sent transfers...`);
-      for (const transfer of sentTxs.transfers) {
-        if (transfer.hash) {
-          const timestamp = this.getTransferTimestamp(transfer);
-          
-          transactions.push({
-            hash: transfer.hash,
-            blockNumber: BigInt(transfer.blockNum),
-            timestamp,
-            from: transfer.from,
-            to: transfer.to || null,
-            value: BigInt(Math.floor((transfer.value || 0) * 1e18)),
-            gasUsed: BigInt(0), // Will get this later if needed
-            gasPrice: BigInt(0), // Will get this later if needed
-            status: 'success',
-            isContractInteraction: transfer.category !== 'external',
-          });
-        }
+      try {
+        return await this.fetchTransactionHistoryAlchemy(address);
+      } catch (alchemyError) {
+        console.warn('⚠️ Alchemy failed, using basic RPC...', alchemyError);
+        return await this.fetchTransactionHistoryFallback(address);
       }
-
-      // Process received transactions (avoid duplicates)
-      const existingHashes = new Set(transactions.map(tx => tx.hash));
-      for (const transfer of receivedTxs.transfers) {
-        if (transfer.hash && !existingHashes.has(transfer.hash)) {
-          const timestamp = this.getTransferTimestamp(transfer);
-          
-          transactions.push({
-            hash: transfer.hash,
-            blockNumber: BigInt(transfer.blockNum),
-            timestamp,
-            from: transfer.from,
-            to: transfer.to || null,
-            value: BigInt(Math.floor((transfer.value || 0) * 1e18)),
-            gasUsed: BigInt(0), // Simplified - no receipt fetching for now
-            gasPrice: BigInt(0), // Simplified - no transaction fetching for now
-            status: 'success',
-            isContractInteraction: transfer.category !== 'external',
-          });
-        }
-      }
-      
-      console.log(`✅ Found ${transactions.length} transactions for address ${checksumAddress}`);
-      console.log(`📊 Sent transfers: ${sentTxs.transfers.length}, Received transfers: ${receivedTxs.transfers.length}`);
-      return transactions.sort((a, b) => b.timestamp - a.timestamp);
-    } catch (error) {
-      console.error('❌ Error fetching transaction history with Alchemy:', error);
-      console.log('🔄 Falling back to basic RPC method...');
-      // Fallback to basic method if Alchemy fails
-      return this.fetchTransactionHistoryFallback(address);
     }
   }
 
