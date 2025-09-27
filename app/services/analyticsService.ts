@@ -73,86 +73,117 @@ export class AnalyticsService {
     // Check if we have an Etherscan API key
     if (API_KEY !== 'YourApiKeyToken') {
       try {
-        console.log('🎯 Using Etherscan v2 API for Base network...');
-        return await this.fetchTransactionHistoryEtherscan(address);
+        console.log('🎯 Using Etherscan v2 API for COMPLETE Base history...');
+        return await this.fetchCompleteTransactionHistory(address);
       } catch (etherscanError) {
-        console.warn('⚠️ Etherscan v2 failed, using enhanced RPC...', etherscanError);
+        console.warn('⚠️ Etherscan v2 failed, using RPC fallback...', etherscanError);
         return await this.fetchBasicTransactions(address);
       }
     } else {
-      console.log('🎯 No API key found, using enhanced RPC method...');
+      console.log('🎯 No API key found, using RPC method...');
       return await this.fetchBasicTransactions(address);
     }
   }
 
   /**
-   * Fetches transaction history using Etherscan v2 API for Base
+   * Fetches COMPLETE transaction history using Etherscan v2 API with pagination
    */
-  private async fetchTransactionHistoryEtherscan(address: string): Promise<Transaction[]> {
+  private async fetchCompleteTransactionHistory(address: string): Promise<Transaction[]> {
     try {
       const checksumAddress = getAddress(address);
-      console.log(`🔍 Fetching from Etherscan v2 for Base: ${checksumAddress}`);
+      console.log(`🔍 Fetching COMPLETE history from Etherscan v2 for Base: ${checksumAddress}`);
       
-      // Fetch normal transactions using Etherscan v2 API with Base chain ID
-      const normalTxUrl = `${ETHERSCAN_V2_API_URL}?chainid=${BASE_CHAIN_ID}&module=account&action=txlist&address=${checksumAddress}&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=${API_KEY}`;
+      let allTransactions: Transaction[] = [];
+      let page = 1;
+      const maxOffset = 10000; // Maximum per page
       
-      console.log('📡 Calling Etherscan v2 API...');
-      console.log('🔗 URL:', normalTxUrl.replace(API_KEY, 'API_KEY_HIDDEN'));
-      
-      const response = await fetch(normalTxUrl);
-      
-      if (!response.ok) {
-        throw new Error(`Etherscan v2 API failed: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      
-      console.log('📋 Etherscan v2 response:', {
-        status: data.status,
-        message: data.message,
-        resultCount: data.result?.length || 0
-      });
-
-      const transactions: Transaction[] = [];
-
-      if (data.status === '1' && data.result && Array.isArray(data.result)) {
-        console.log(`📊 Processing ${data.result.length} transactions from Etherscan v2...`);
+      // Fetch multiple pages to get complete history
+      while (true) {
+        const pageUrl = `${ETHERSCAN_V2_API_URL}?chainid=${BASE_CHAIN_ID}&module=account&action=txlist&address=${checksumAddress}&startblock=0&endblock=99999999&page=${page}&offset=${maxOffset}&sort=asc&apikey=${API_KEY}`;
         
-        for (const tx of data.result) {
-          transactions.push({
-            hash: tx.hash,
-            blockNumber: BigInt(tx.blockNumber),
-            timestamp: parseInt(tx.timeStamp),
-            from: tx.from,
-            to: tx.to || null,
-            value: BigInt(tx.value),
-            gasUsed: BigInt(tx.gasUsed),
-            gasPrice: BigInt(tx.gasPrice),
-            status: tx.txreceipt_status === '1' ? 'success' : 'failed',
-            isContractInteraction: tx.input !== '0x',
-          });
+        console.log(`📡 Fetching page ${page} from Etherscan v2...`);
+        
+        const response = await fetch(pageUrl);
+        
+        if (!response.ok) {
+          throw new Error(`Etherscan v2 API failed: ${response.status} ${response.statusText}`);
         }
-      } else if (data.status === '0') {
-        if (data.message === 'No transactions found') {
-          console.log('✅ No transactions found (valid result)');
-          return [];
-        } else if (data.message === 'NOTOK') {
-          throw new Error('❌ API Key Error: Please check your NEXT_PUBLIC_ETHERSCAN_API_KEY in .env.local');
+
+        const data = await response.json();
+        
+        console.log(`📋 Page ${page} response:`, {
+          status: data.status,
+          message: data.message,
+          resultCount: data.result?.length || 0
+        });
+
+        if (data.status === '1' && data.result && Array.isArray(data.result)) {
+          console.log(`📊 Processing ${data.result.length} transactions from page ${page}...`);
+          
+          for (const tx of data.result) {
+            allTransactions.push({
+              hash: tx.hash,
+              blockNumber: BigInt(tx.blockNumber),
+              timestamp: parseInt(tx.timeStamp),
+              from: tx.from,
+              to: tx.to || null,
+              value: BigInt(tx.value),
+              gasUsed: BigInt(tx.gasUsed),
+              gasPrice: BigInt(tx.gasPrice),
+              status: tx.txreceipt_status === '1' ? 'success' : 'failed',
+              isContractInteraction: tx.input !== '0x',
+            });
+          }
+          
+          // If we got less than maxOffset, we've reached the end
+          if (data.result.length < maxOffset) {
+            console.log(`🏁 Reached end of transactions at page ${page}`);
+            break;
+          }
+          
+          page++;
+          
+          // Safety limit to prevent infinite loops
+          if (page > 50) {
+            console.log(`⚠️ Reached page limit (50), stopping. Total so far: ${allTransactions.length}`);
+            break;
+          }
+          
+        } else if (data.status === '0') {
+          if (data.message === 'No transactions found' && page === 1) {
+            console.log('✅ No transactions found (valid result)');
+            break;
+          } else if (data.message === 'NOTOK') {
+            throw new Error('❌ API Key Error: Please check your NEXT_PUBLIC_ETHERSCAN_API_KEY in .env.local');
+          } else {
+            console.log(`⚠️ Page ${page} returned: ${data.message}`);
+            break;
+          }
         } else {
-          throw new Error(`Etherscan v2 API error: ${data.message || 'Unknown error'}`);
+          console.log(`⚠️ Unexpected response on page ${page}:`, data);
+          break;
         }
       }
 
-      console.log(`✅ Etherscan v2: Found ${transactions.length} total transactions`);
-      return transactions.sort((a, b) => b.timestamp - a.timestamp);
+      // Get first and last transaction dates for logging
+      if (allTransactions.length > 0) {
+        const sortedByTime = [...allTransactions].sort((a, b) => a.timestamp - b.timestamp);
+        const firstTx = sortedByTime[0];
+        const lastTx = sortedByTime[sortedByTime.length - 1];
+        
+        console.log(`📅 COMPLETE Transaction range: ${new Date(firstTx.timestamp * 1000).toLocaleDateString()} to ${new Date(lastTx.timestamp * 1000).toLocaleDateString()}`);
+      }
+
+      console.log(`✅ Etherscan v2 COMPLETE: Found ${allTransactions.length} total transactions across ${page} pages`);
+      return allTransactions.sort((a, b) => b.timestamp - a.timestamp);
     } catch (error) {
-      console.error('❌ Error fetching from Etherscan v2:', error);
+      console.error('❌ Error fetching complete history from Etherscan v2:', error);
       throw error;
     }
   }
 
   /**
-   * Enhanced RPC method using Base network directly (no API key needed)
+   * Enhanced RPC method using Base network directly
    */
   private async fetchBasicTransactions(address: string): Promise<Transaction[]> {
     try {
@@ -161,39 +192,24 @@ export class AnalyticsService {
       const transactions: Transaction[] = [];
       
       console.log(`🔄 Using Base RPC directly for: ${checksumAddress}`);
-      console.log(`📊 Current block: ${currentBlock}, checking last 1000 blocks...`);
+      console.log(`📊 Current block: ${currentBlock}, checking last 500 blocks...`);
       
-      // Check blocks in smaller batches for better performance
-      const blocksToCheck = 1000;
-      const batchSize = 50;
-      
-      for (let batch = 0; batch < blocksToCheck / batchSize; batch++) {
-        const batchPromises = [];
-        
-        // Create batch of block requests
-        for (let i = 0; i < batchSize; i++) {
-          const blockNumber = currentBlock - BigInt(batch * batchSize + i);
-          if (blockNumber > 0) {
-            batchPromises.push(
-              publicClient.getBlock({ 
-                blockNumber, 
-                includeTransactions: true 
-              }).catch(() => null)
-            );
-          }
-        }
-        
-        // Process batch
-        const blocks = await Promise.allSettled(batchPromises);
-        
-        blocks.forEach((result, index) => {
-          if (result.status === 'fulfilled' && result.value && result.value.transactions) {
-            for (const tx of result.value.transactions) {
+      // Check recent blocks for transactions
+      for (let i = 0; i < 500; i++) {
+        const blockNumber = currentBlock - BigInt(i);
+        try {
+          const block = await publicClient.getBlock({ 
+            blockNumber, 
+            includeTransactions: true 
+          });
+          
+          if (block.transactions) {
+            for (const tx of block.transactions) {
               if (typeof tx === 'object' && (tx.from === checksumAddress || tx.to === checksumAddress)) {
                 transactions.push({
                   hash: tx.hash,
-                  blockNumber: tx.blockNumber || (currentBlock - BigInt(batch * batchSize + index)),
-                  timestamp: Number(result.value.timestamp),
+                  blockNumber: tx.blockNumber || blockNumber,
+                  timestamp: Number(block.timestamp),
                   from: tx.from,
                   to: tx.to,
                   value: tx.value,
@@ -205,16 +221,18 @@ export class AnalyticsService {
               }
             }
           }
-        });
-        
-        // Log progress
-        if (batch % 5 === 0) {
-          console.log(`📈 Progress: ${batch * batchSize}/${blocksToCheck} blocks, ${transactions.length} transactions found`);
+        } catch (error) {
+          continue;
         }
         
-        // Stop if we found enough transactions
-        if (transactions.length >= 50) {
-          console.log(`🎯 Found sufficient transactions (${transactions.length}), stopping search`);
+        // Log progress every 100 blocks
+        if (i % 100 === 0 && i > 0) {
+          console.log(`📈 Checked ${i} blocks, found ${transactions.length} transactions`);
+        }
+        
+        // Stop if we found enough
+        if (transactions.length >= 20) {
+          console.log(`🎯 Found ${transactions.length} transactions, stopping search`);
           break;
         }
       }
@@ -376,14 +394,7 @@ export class AnalyticsService {
 
     try {
       const checksumAddress = getAddress(address);
-      console.log(`🚀 Starting analysis for: ${checksumAddress}`);
-      
-      // Check if we have an API key
-      if (API_KEY !== 'YourApiKeyToken') {
-        console.log('🔑 API key detected, will try Etherscan v2...');
-      } else {
-        console.log('🔓 No API key, will use RPC method...');
-      }
+      console.log(`🚀 Starting COMPLETE analysis for: ${checksumAddress}`);
       
       // Fetch data in parallel
       const [transactions, ethBalance] = await Promise.all([
@@ -439,9 +450,12 @@ export class AnalyticsService {
         },
       };
 
-      console.log('✅ Analysis complete:', {
+      console.log('✅ COMPLETE Analysis:', {
         transactions: result.totalTransactions,
         activeDays: result.activeDays,
+        activeMonths: result.activeMonths,
+        firstTx: result.firstTransactionDate,
+        lastTx: result.lastTransactionDate,
         currentStreak: result.activityStreak.currentStreak
       });
 
@@ -456,131 +470,115 @@ export class AnalyticsService {
   }
 
   /**
-   * Fetches transaction history using Etherscan v2 API for Base
+   * Fetches COMPLETE transaction history using Etherscan v2 API with pagination
    */
-  private async fetchTransactionHistoryEtherscan(address: string): Promise<Transaction[]> {
+  private async fetchCompleteTransactionHistory(address: string): Promise<Transaction[]> {
     try {
       const checksumAddress = getAddress(address);
-      console.log(`🔍 Fetching from Etherscan v2 for Base: ${checksumAddress}`);
+      console.log(`🔍 Fetching COMPLETE history from Etherscan v2 for Base: ${checksumAddress}`);
       
-      // Fetch normal transactions using Etherscan v2 API with Base chain ID
-      const normalTxUrl = `${ETHERSCAN_V2_API_URL}?chainid=${BASE_CHAIN_ID}&module=account&action=txlist&address=${checksumAddress}&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=${API_KEY}`;
+      let allTransactions: Transaction[] = [];
+      let page = 1;
+      const maxOffset = 10000; // Maximum per page
       
-      console.log('📡 Calling Etherscan v2 API...');
-      console.log('🔗 URL:', normalTxUrl.replace(API_KEY, 'API_KEY_HIDDEN'));
-      
-      const response = await fetch(normalTxUrl);
-      
-      if (!response.ok) {
-        throw new Error(`Etherscan v2 API failed: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      
-      console.log('📋 Etherscan v2 response:', {
-        status: data.status,
-        message: data.message,
-        resultCount: data.result?.length || 0
-      });
-
-      const transactions: Transaction[] = [];
-
-      if (data.status === '1' && data.result && Array.isArray(data.result)) {
-        console.log(`📊 Processing ${data.result.length} transactions from Etherscan v2...`);
+      // Fetch multiple pages to get complete history
+      while (true) {
+        const pageUrl = `${ETHERSCAN_V2_API_URL}?chainid=${BASE_CHAIN_ID}&module=account&action=txlist&address=${checksumAddress}&startblock=0&endblock=99999999&page=${page}&offset=${maxOffset}&sort=asc&apikey=${API_KEY}`;
         
-        for (const tx of data.result) {
-          transactions.push({
-            hash: tx.hash,
-            blockNumber: BigInt(tx.blockNumber),
-            timestamp: parseInt(tx.timeStamp),
-            from: tx.from,
-            to: tx.to || null,
-            value: BigInt(tx.value),
-            gasUsed: BigInt(tx.gasUsed),
-            gasPrice: BigInt(tx.gasPrice),
-            status: tx.txreceipt_status === '1' ? 'success' : 'failed',
-            isContractInteraction: tx.input !== '0x',
-          });
+        console.log(`📡 Fetching page ${page} from Etherscan v2...`);
+        
+        const response = await fetch(pageUrl);
+        
+        if (!response.ok) {
+          throw new Error(`Etherscan v2 API failed: ${response.status} ${response.statusText}`);
         }
-      } else if (data.status === '0') {
-        if (data.message === 'No transactions found') {
-          console.log('✅ No transactions found (valid result)');
-          return [];
-        } else if (data.message === 'NOTOK') {
-          throw new Error('❌ API Key Error: Please check your NEXT_PUBLIC_ETHERSCAN_API_KEY in .env.local');
+
+        const data = await response.json();
+        
+        console.log(`📋 Page ${page} response:`, {
+          status: data.status,
+          message: data.message,
+          resultCount: data.result?.length || 0
+        });
+
+        if (data.status === '1' && data.result && Array.isArray(data.result)) {
+          console.log(`📊 Processing ${data.result.length} transactions from page ${page}...`);
+          
+          for (const tx of data.result) {
+            allTransactions.push({
+              hash: tx.hash,
+              blockNumber: BigInt(tx.blockNumber),
+              timestamp: parseInt(tx.timeStamp),
+              from: tx.from,
+              to: tx.to || null,
+              value: BigInt(tx.value),
+              gasUsed: BigInt(tx.gasUsed),
+              gasPrice: BigInt(tx.gasPrice),
+              status: tx.txreceipt_status === '1' ? 'success' : 'failed',
+              isContractInteraction: tx.input !== '0x',
+            });
+          }
+          
+          // If we got less than maxOffset, we've reached the end
+          if (data.result.length < maxOffset) {
+            console.log(`🏁 Reached end of transactions at page ${page}`);
+            break;
+          }
+          
+          page++;
+          
+          // Safety limit to prevent infinite loops  
+          if (page > 50) {
+            console.log(`⚠️ Reached page limit (50), stopping. Total so far: ${allTransactions.length}`);
+            break;
+          }
+          
+        } else if (data.status === '0') {
+          if (data.message === 'No transactions found' && page === 1) {
+            console.log('✅ No transactions found (valid result)');
+            break;
+          } else if (data.message === 'NOTOK') {
+            throw new Error('❌ API Key Error: Please check your NEXT_PUBLIC_ETHERSCAN_API_KEY in .env.local');
+          } else {
+            console.log(`⚠️ Page ${page} returned: ${data.message}`);
+            break;
+          }
         } else {
-          throw new Error(`Etherscan v2 API error: ${data.message || 'Unknown error'}`);
+          console.log(`⚠️ Unexpected response on page ${page}:`, data);
+          break;
         }
       }
 
-      console.log(`✅ Etherscan v2: Found ${transactions.length} total transactions`);
-      return transactions.sort((a, b) => b.timestamp - a.timestamp);
+      // Get first and last transaction dates for logging
+      if (allTransactions.length > 0) {
+        const sortedByTime = [...allTransactions].sort((a, b) => a.timestamp - b.timestamp);
+        const firstTx = sortedByTime[0];
+        const lastTx = sortedByTime[sortedByTime.length - 1];
+        
+        console.log(`📅 COMPLETE Transaction range: ${new Date(firstTx.timestamp * 1000).toLocaleDateString()} to ${new Date(lastTx.timestamp * 1000).toLocaleDateString()}`);
+      }
+
+      console.log(`✅ Etherscan v2 COMPLETE: Found ${allTransactions.length} total transactions across ${page} pages`);
+      return allTransactions.sort((a, b) => b.timestamp - a.timestamp);
     } catch (error) {
-      console.error('❌ Error fetching from Etherscan v2:', error);
+      console.error('❌ Error fetching complete history from Etherscan v2:', error);
       throw error;
     }
   }
 
   /**
-   * Enhanced RPC method using Base network directly
+   * Gets the current ETH balance for an address
    */
-  private async fetchBasicTransactions(address: string): Promise<Transaction[]> {
+  private async getBalance(address: string): Promise<bigint> {
     try {
-      const checksumAddress = getAddress(address);
-      const currentBlock = await publicClient.getBlockNumber();
-      const transactions: Transaction[] = [];
-      
-      console.log(`🔄 Using Base RPC directly for: ${checksumAddress}`);
-      console.log(`📊 Current block: ${currentBlock}, checking last 500 blocks...`);
-      
-      // Check recent blocks for transactions
-      for (let i = 0; i < 500; i++) {
-        const blockNumber = currentBlock - BigInt(i);
-        try {
-          const block = await publicClient.getBlock({ 
-            blockNumber, 
-            includeTransactions: true 
-          });
-          
-          if (block.transactions) {
-            for (const tx of block.transactions) {
-              if (typeof tx === 'object' && (tx.from === checksumAddress || tx.to === checksumAddress)) {
-                transactions.push({
-                  hash: tx.hash,
-                  blockNumber: tx.blockNumber || blockNumber,
-                  timestamp: Number(block.timestamp),
-                  from: tx.from,
-                  to: tx.to,
-                  value: tx.value,
-                  gasUsed: BigInt(0),
-                  gasPrice: tx.gasPrice || BigInt(0),
-                  status: 'success',
-                  isContractInteraction: tx.to !== null && tx.input !== '0x',
-                });
-              }
-            }
-          }
-        } catch (error) {
-          continue;
-        }
-        
-        // Log progress every 100 blocks
-        if (i % 100 === 0 && i > 0) {
-          console.log(`📈 Checked ${i} blocks, found ${transactions.length} transactions`);
-        }
-        
-        // Stop if we found enough
-        if (transactions.length >= 20) {
-          console.log(`🎯 Found ${transactions.length} transactions, stopping search`);
-          break;
-        }
-      }
-      
-      console.log(`✅ RPC: Found ${transactions.length} total transactions`);
-      return transactions.sort((a, b) => b.timestamp - a.timestamp);
+      const balance = await publicClient.getBalance({ 
+        address: getAddress(address) 
+      });
+      console.log(`💰 Balance: ${AnalyticsService.formatEth(balance)} ETH`);
+      return balance;
     } catch (error) {
-      console.error('❌ Error in RPC method:', error);
-      return [];
+      console.error('Error fetching balance:', error);
+      return BigInt(0);
     }
   }
 
