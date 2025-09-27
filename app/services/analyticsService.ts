@@ -9,12 +9,9 @@ import type {
   AnalyticsError 
 } from '../types/analytics';
 
-// Basescan API configuration
-const BASESCAN_API_URL = 'https://api.basescan.org/api';
-// Support both Basescan and Etherscan API keys (Etherscan now supports Base)
-const API_KEY = process.env.NEXT_PUBLIC_BASESCAN_API_KEY || 
-                process.env.NEXT_PUBLIC_ETHERSCAN_API_KEY || 
-                'YourApiKeyToken';
+// For now, let's use the public Base RPC without API keys
+// Basescan requires a separate API key, Etherscan doesn't have Base data
+const API_KEY = process.env.NEXT_PUBLIC_BASESCAN_API_KEY || 'demo';
 
 // Create a public client for Base network
 const publicClient = createPublicClient({
@@ -141,13 +138,13 @@ export class AnalyticsService {
       console.error('❌ Error fetching from Basescan:', error);
       
       // Simple fallback using basic RPC
-      console.log('🔄 Using basic RPC fallback...');
+      console.log('🔄 Using enhanced RPC method (no API key needed)...');
       return this.fetchBasicTransactions(address);
     }
   }
 
   /**
-   * Simple fallback using basic RPC calls
+   * Enhanced RPC method using Base network directly (no API key needed)
    */
   private async fetchBasicTransactions(address: string): Promise<Transaction[]> {
     try {
@@ -155,28 +152,44 @@ export class AnalyticsService {
       const currentBlock = await publicClient.getBlockNumber();
       const transactions: Transaction[] = [];
       
-      console.log('🔄 Checking recent blocks for transactions...');
+      console.log(`🔄 Using Base RPC directly for: ${checksumAddress}`);
+      console.log(`📊 Current block: ${currentBlock}, checking last 2000 blocks...`);
       
-      // Check recent blocks as fallback
-      for (let i = 0; i < 20; i++) {
-        const blockNumber = currentBlock - BigInt(i);
-        try {
-          const block = await publicClient.getBlock({ 
-            blockNumber, 
-            includeTransactions: true 
-          });
-          
-          if (block.transactions) {
-            for (const tx of block.transactions) {
+      // Check more blocks and process in batches for better performance
+      const blocksToCheck = 2000;
+      const batchSize = 100;
+      
+      for (let batch = 0; batch < blocksToCheck / batchSize; batch++) {
+        const batchPromises = [];
+        
+        // Create batch of block requests
+        for (let i = 0; i < batchSize; i++) {
+          const blockNumber = currentBlock - BigInt(batch * batchSize + i);
+          if (blockNumber > 0) {
+            batchPromises.push(
+              publicClient.getBlock({ 
+                blockNumber, 
+                includeTransactions: true 
+              }).catch(() => null) // Handle individual block failures
+            );
+          }
+        }
+        
+        // Process batch
+        const blocks = await Promise.allSettled(batchPromises);
+        
+        blocks.forEach((result, index) => {
+          if (result.status === 'fulfilled' && result.value && result.value.transactions) {
+            for (const tx of result.value.transactions) {
               if (typeof tx === 'object' && (tx.from === checksumAddress || tx.to === checksumAddress)) {
                 transactions.push({
                   hash: tx.hash,
-                  blockNumber: tx.blockNumber || blockNumber,
-                  timestamp: Number(block.timestamp),
+                  blockNumber: tx.blockNumber || (currentBlock - BigInt(batch * batchSize + index)),
+                  timestamp: Number(result.value.timestamp),
                   from: tx.from,
                   to: tx.to,
                   value: tx.value,
-                  gasUsed: BigInt(0),
+                  gasUsed: BigInt(0), // Will be filled by receipt if needed
                   gasPrice: tx.gasPrice || BigInt(0),
                   status: 'success',
                   isContractInteraction: tx.to !== null && tx.input !== '0x',
@@ -184,15 +197,41 @@ export class AnalyticsService {
               }
             }
           }
-        } catch (error) {
-          continue;
+        });
+        
+        // Log progress every few batches
+        if (batch % 5 === 0) {
+          console.log(`📈 Progress: ${batch * batchSize}/${blocksToCheck} blocks, ${transactions.length} transactions found`);
+        }
+        
+        // Stop if we found enough transactions
+        if (transactions.length >= 50) {
+          console.log(`🎯 Found sufficient transactions (${transactions.length}), stopping search`);
+          break;
         }
       }
       
-      console.log(`🔄 Basic RPC: Found ${transactions.length} transactions`);
+      // Get gas data for recent transactions
+      if (transactions.length > 0) {
+        console.log('⛽ Getting gas data for recent transactions...');
+        const recentTxs = transactions.slice(0, 10); // Just get gas for recent ones
+        
+        for (const tx of recentTxs) {
+          try {
+            const receipt = await publicClient.getTransactionReceipt({ hash: tx.hash });
+            tx.gasUsed = receipt.gasUsed;
+            tx.status = receipt.status === 'success' ? 'success' : 'failed';
+          } catch (error) {
+            // Skip if receipt fetch fails
+            continue;
+          }
+        }
+      }
+      
+      console.log(`✅ Enhanced RPC: Found ${transactions.length} total transactions`);
       return transactions.sort((a, b) => b.timestamp - a.timestamp);
     } catch (error) {
-      console.error('❌ Error in basic RPC method:', error);
+      console.error('❌ Error in enhanced RPC method:', error);
       return [];
     }
   }
