@@ -4,6 +4,7 @@ import { Wallet } from "@coinbase/onchainkit/wallet";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
 import { AddressInput } from "./components/AddressInput";
 import { AnalyticsDashboard } from "./components/AnalyticsDashboard";
+import { Footer } from "./components/Footer";
 import { AnalyticsService } from "./services/analyticsService";
 import { mockAnalyticsData } from "./utils/mockData";
 import type { AddressAnalytics, AnalyticsError } from "./types/analytics";
@@ -131,6 +132,8 @@ export default function Home() {
           </div>
         )}
       </div>
+      
+      <Footer />
     </div>
   );
 }

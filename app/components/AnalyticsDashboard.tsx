@@ -5,6 +5,78 @@ import { AnalyticsService } from '../services/analyticsService';
 import { MetricCard } from './MetricCard';
 import styles from './AnalyticsDashboard.module.css';
 
+// Helper functions for address profiling
+function getAddressName(analytics: AddressAnalytics): string {
+  const { totalTransactions, contractInteractions, totalValueTransferred, activeDays } = analytics;
+  const contractRatio = contractInteractions / Math.max(totalTransactions, 1);
+  const avgDailyTxs = totalTransactions / Math.max(activeDays, 1);
+  const totalEth = Number(AnalyticsService.formatEth(totalValueTransferred));
+
+  // High-volume trader
+  if (totalEth > 100 && avgDailyTxs > 10) return "🐋 Whale Trader";
+  
+  // DeFi power user
+  if (contractRatio > 0.8 && totalTransactions > 100) return "🚀 DeFi Power User";
+  
+  // Bot or automated
+  if (avgDailyTxs > 20 && contractRatio > 0.9) return "🤖 Trading Bot";
+  
+  // NFT collector
+  if (contractRatio > 0.6 && totalEth < 10) return "🎨 NFT Collector";
+  
+  // Active trader
+  if (totalTransactions > 200 && activeDays > 30) return "📈 Active Trader";
+  
+  // Contract deployer
+  if (contractRatio > 0.5 && totalTransactions < 50) return "⚙️ Contract Deployer";
+  
+  // Regular user
+  if (totalTransactions > 50) return "👤 Regular User";
+  
+  // New user
+  if (totalTransactions < 10) return "🌱 New User";
+  
+  // Default
+  return "📊 Base User";
+}
+
+function getAddressIcon(analytics: AddressAnalytics): string {
+  const { totalTransactions, contractInteractions, totalValueTransferred } = analytics;
+  const contractRatio = contractInteractions / Math.max(totalTransactions, 1);
+  const totalEth = Number(AnalyticsService.formatEth(totalValueTransferred));
+
+  if (totalEth > 100) return "🐋";
+  if (contractRatio > 0.8) return "🚀";
+  if (contractRatio > 0.6) return "🎨";
+  if (totalTransactions > 200) return "📈";
+  if (totalTransactions < 10) return "🌱";
+  return "👤";
+}
+
+function getAddressDescription(analytics: AddressAnalytics): string {
+  const { totalTransactions, contractInteractions, activeDays, activityStreak } = analytics;
+  const contractRatio = contractInteractions / Math.max(totalTransactions, 1);
+  const avgDailyTxs = totalTransactions / Math.max(activeDays, 1);
+
+  const traits = [];
+  
+  if (avgDailyTxs > 10) traits.push("high-frequency trader");
+  else if (avgDailyTxs > 2) traits.push("active trader");
+  else traits.push("casual user");
+
+  if (contractRatio > 0.8) traits.push("DeFi enthusiast");
+  else if (contractRatio > 0.5) traits.push("contract user");
+
+  if (activityStreak.longestStreak > 30) traits.push("consistent user");
+  else if (activityStreak.longestStreak > 7) traits.push("regular user");
+
+  if (activeDays > 100) traits.push("long-term Base user");
+  else if (activeDays > 30) traits.push("established user");
+  else traits.push("newer to Base");
+
+  return `A ${traits.join(", ")} with ${activeDays} active days on Base network.`;
+}
+
 interface AnalyticsDashboardProps {
   analytics: AddressAnalytics;
   loading?: boolean;
@@ -148,32 +220,16 @@ export function AnalyticsDashboard({ analytics, loading = false }: AnalyticsDash
         />
       </div>
 
-      {analytics.monthlyActivity.length > 0 && (
-        <div className={styles.section}>
-          <h2 className={styles.sectionTitle}>Monthly Activity</h2>
-          <div className={styles.activityGrid}>
-            {analytics.monthlyActivity.slice(0, 6).map((month) => (
-              <div key={month.month} className={styles.activityCard}>
-                <div className={styles.activityMonth}>{month.month}</div>
-                <div className={styles.activityStats}>
-                  <div className={styles.activityStat}>
-                    <span className={styles.activityValue}>{month.transactionCount}</span>
-                    <span className={styles.activityLabel}>Transactions</span>
-                  </div>
-                  <div className={styles.activityStat}>
-                    <span className={styles.activityValue}>{month.activeDays}</span>
-                    <span className={styles.activityLabel}>Active Days</span>
-                  </div>
-                  <div className={styles.activityStat}>
-                    <span className={styles.activityValue}>{AnalyticsService.formatEth(month.totalValue, 2)}</span>
-                    <span className={styles.activityLabel}>ETH Moved</span>
-                  </div>
-                </div>
-              </div>
-            ))}
+      <div className={styles.section}>
+        <h2 className={styles.sectionTitle}>Address Profile</h2>
+        <div className={styles.profileCard}>
+          <div className={styles.profileIcon}>{getAddressIcon(analytics)}</div>
+          <div className={styles.profileInfo}>
+            <h3 className={styles.profileName}>{getAddressName(analytics)}</h3>
+            <p className={styles.profileDescription}>{getAddressDescription(analytics)}</p>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

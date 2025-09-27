@@ -1,0 +1,139 @@
+.footer {
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 4rem;
+  padding: 3rem 0 2rem 0;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.disclaimer {
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 2rem;
+}
+
+.disclaimerTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #fbbf24;
+  margin: 0 0 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.disclaimerText {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0;
+}
+
+.info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.infoSection h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--foreground);
+  margin: 0 0 12px 0;
+}
+
+.infoSection ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.infoSection li {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 6px;
+  padding-left: 16px;
+  position: relative;
+}
+
+.infoSection li::before {
+  content: '•';
+  color: #3b82f6;
+  position: absolute;
+  left: 0;
+}
+
+.bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 1.5rem;
+  text-align: center;
+}
+
+.copyright {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0 0 8px 0;
+}
+
+.warning {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+  font-style: italic;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .footer {
+    padding: 2rem 0 1.5rem 0;
+    margin-top: 3rem;
+  }
+  
+  .container {
+    padding: 0 16px;
+  }
+  
+  .disclaimer {
+    padding: 20px;
+  }
+  
+  .disclaimerTitle {
+    font-size: 1rem;
+  }
+  
+  .disclaimerText {
+    font-size: 0.8rem;
+  }
+  
+  .info {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .infoSection {
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .footer {
+    margin-top: 2rem;
+  }
+  
+  .disclaimer {
+    padding: 16px;
+  }
+  
+  .info {
+    gap: 1rem;
+  }
+}
