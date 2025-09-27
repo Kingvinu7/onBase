@@ -22,6 +22,25 @@ const alchemy = new Alchemy({
   network: Network.BASE_MAINNET,
 });
 
+// Alternative: Direct RPC calls if needed
+const alchemyRpc = {
+  url: `https://base-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`,
+  
+  async getBlockByNumber(blockNumber: string) {
+    const response = await fetch(this.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'eth_getBlockByNumber',
+        params: [blockNumber, true],
+        id: 1,
+      }),
+    });
+    return response.json();
+  }
+};
+
 export class AnalyticsService {
   private static instance: AnalyticsService;
   
@@ -110,6 +129,72 @@ export class AnalyticsService {
     } catch (error) {
       console.error('Error fetching transaction history with Alchemy:', error);
       // Fallback to basic method if Alchemy fails
+      return this.fetchTransactionHistoryFallback(address);
+    }
+  }
+
+  /**
+   * Alternative method using direct Alchemy RPC calls
+   */
+  private async fetchTransactionHistoryRPC(address: string): Promise<Transaction[]> {
+    try {
+      const checksumAddress = getAddress(address);
+      const transactions: Transaction[] = [];
+
+      // Get recent blocks using eth_getBlockByNumber
+      const latestBlockResponse = await fetch(alchemyRpc.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_blockNumber',
+          params: [],
+          id: 1,
+        }),
+      });
+      
+      const latestBlockData = await latestBlockResponse.json();
+      const latestBlock = parseInt(latestBlockData.result, 16);
+
+      // Check last 100 blocks for transactions
+      for (let i = 0; i < 100; i++) {
+        const blockNumber = `0x${(latestBlock - i).toString(16)}`;
+        
+        const blockResponse = await fetch(alchemyRpc.url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'eth_getBlockByNumber',
+            params: [blockNumber, true],
+            id: 1,
+          }),
+        });
+
+        const blockData = await blockResponse.json();
+        if (blockData.result?.transactions) {
+          for (const tx of blockData.result.transactions) {
+            if (tx.from === checksumAddress || tx.to === checksumAddress) {
+              transactions.push({
+                hash: tx.hash,
+                blockNumber: BigInt(parseInt(tx.blockNumber, 16)),
+                timestamp: parseInt(blockData.result.timestamp, 16),
+                from: tx.from,
+                to: tx.to,
+                value: BigInt(tx.value),
+                gasUsed: BigInt(parseInt(tx.gas, 16)),
+                gasPrice: BigInt(parseInt(tx.gasPrice || '0x0', 16)),
+                status: 'success',
+                isContractInteraction: tx.to !== null && tx.input !== '0x',
+              });
+            }
+          }
+        }
+      }
+
+      return transactions.sort((a, b) => b.timestamp - a.timestamp);
+    } catch (error) {
+      console.error('Error fetching with RPC calls:', error);
       return this.fetchTransactionHistoryFallback(address);
     }
   }
