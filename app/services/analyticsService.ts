@@ -52,6 +52,26 @@ export class AnalyticsService {
   }
 
   /**
+   * Helper function to safely extract timestamp from transfer
+   */
+  private async getTransferTimestamp(transfer: any): Promise<number> {
+    // Try to get timestamp from metadata first
+    if (transfer.metadata?.blockTimestamp) {
+      return new Date(transfer.metadata.blockTimestamp).getTime() / 1000;
+    }
+    
+    // Fallback: get timestamp from block
+    try {
+      const block = await alchemy.core.getBlock(transfer.blockNum);
+      return block.timestamp;
+    } catch (error) {
+      console.warn(`Failed to get block timestamp for block ${transfer.blockNum}:`, error);
+      // Use current time as last resort
+      return Date.now() / 1000;
+    }
+  }
+
+  /**
    * Validates if the provided string is a valid Ethereum address
    */
   validateAddress(address: string): boolean {
@@ -91,11 +111,12 @@ export class AnalyticsService {
               alchemy.core.getTransactionReceipt(transfer.hash),
               alchemy.core.getTransaction(transfer.hash)
             ]);
+            const timestamp = await this.getTransferTimestamp(transfer);
             
             transactions.push({
               hash: transfer.hash,
               blockNumber: BigInt(transfer.blockNum),
-              timestamp: new Date(transfer.metadata.blockTimestamp).getTime() / 1000,
+              timestamp,
               from: transfer.from,
               to: transfer.to || null,
               value: BigInt(Math.floor((transfer.value || 0) * 1e18)),
@@ -107,10 +128,11 @@ export class AnalyticsService {
           } catch (error) {
             console.warn(`Failed to get details for transaction ${transfer.hash}:`, error);
             // Add transaction with basic info even if receipt/tx fetch fails
+            const timestamp = await this.getTransferTimestamp(transfer);
             transactions.push({
               hash: transfer.hash,
               blockNumber: BigInt(transfer.blockNum),
-              timestamp: new Date(transfer.metadata.blockTimestamp).getTime() / 1000,
+              timestamp,
               from: transfer.from,
               to: transfer.to || null,
               value: BigInt(Math.floor((transfer.value || 0) * 1e18)),
@@ -136,7 +158,7 @@ export class AnalyticsService {
             transactions.push({
               hash: transfer.hash,
               blockNumber: BigInt(transfer.blockNum),
-              timestamp: new Date(transfer.metadata.blockTimestamp).getTime() / 1000,
+              timestamp: transfer.metadata?.blockTimestamp ? new Date(transfer.metadata.blockTimestamp).getTime() / 1000 : Date.now() / 1000,
               from: transfer.from,
               to: transfer.to || null,
               value: BigInt(Math.floor((transfer.value || 0) * 1e18)),
@@ -148,10 +170,11 @@ export class AnalyticsService {
           } catch (error) {
             console.warn(`Failed to get details for transaction ${transfer.hash}:`, error);
             // Add transaction with basic info even if receipt/tx fetch fails
+            const timestamp = await this.getTransferTimestamp(transfer);
             transactions.push({
               hash: transfer.hash,
               blockNumber: BigInt(transfer.blockNum),
-              timestamp: new Date(transfer.metadata.blockTimestamp).getTime() / 1000,
+              timestamp,
               from: transfer.from,
               to: transfer.to || null,
               value: BigInt(Math.floor((transfer.value || 0) * 1e18)),
