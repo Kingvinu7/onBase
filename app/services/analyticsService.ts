@@ -469,23 +469,6 @@ export class AnalyticsService {
     }
   }
 
-
-  /**
-   * Gets the current ETH balance for an address
-   */
-  private async getBalance(address: string): Promise<bigint> {
-    try {
-      const balance = await publicClient.getBalance({ 
-        address: getAddress(address) 
-      });
-      console.log(`💰 Balance: ${AnalyticsService.formatEth(balance)} ETH`);
-      return balance;
-    } catch (error) {
-      console.error('Error fetching balance:', error);
-      return BigInt(0);
-    }
-  }
-
   /**
    * Formats large numbers for display
    */
