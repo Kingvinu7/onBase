@@ -59,9 +59,42 @@
   gap: 1rem;
 }
 
-.demoSection {
+.actionButtons {
   display: flex;
   justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.walletButton {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.walletButton::before {
+  content: '🔗';
+}
+
+.walletButton:hover:not(:disabled) {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.walletButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .demoButton {
@@ -76,6 +109,11 @@
   transition: all 0.2s ease;
 }
 
+.demoButton::before {
+  content: '👁️';
+  margin-right: 8px;
+}
+
 .demoButton:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.15);
   border-color: rgba(255, 255, 255, 0.3);
@@ -87,6 +125,17 @@
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
+}
+
+.walletHint {
+  text-align: center;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .error {
@@ -190,6 +239,22 @@
   .inputSection {
     max-width: 100%;
     padding: 0 0.5rem;
+  }
+  
+  .actionButtons {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .walletButton,
+  .demoButton {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .walletHint {
+    font-size: 0.8rem;
+    padding: 10px;
   }
   
   .featureGrid {

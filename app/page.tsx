@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Wallet } from "@coinbase/onchainkit/wallet";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
+import { useAccount } from "wagmi";
 import { AddressInput } from "./components/AddressInput";
 import { AnalyticsDashboard } from "./components/AnalyticsDashboard";
 import { Footer } from "./components/Footer";
@@ -12,6 +13,7 @@ import styles from "./page.module.css";
 
 export default function Home() {
   const { setMiniAppReady, isMiniAppReady } = useMiniKit();
+  const { address: connectedAddress, isConnected } = useAccount();
   const [analytics, setAnalytics] = useState<AddressAnalytics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +46,16 @@ export default function Home() {
     }
   };
 
+  const handleAnalyzeConnectedWallet = async () => {
+    if (!connectedAddress) {
+      setError('Please connect your wallet first');
+      return;
+    }
+    
+    console.log('🔗 Analyzing connected wallet:', connectedAddress);
+    await handleAnalyze(connectedAddress);
+  };
+
   return (
     <div className={styles.container}>
       <header className={styles.headerWrapper}>
@@ -66,9 +78,23 @@ export default function Home() {
           <AddressInput 
             onAnalyze={handleAnalyze}
             loading={loading}
+            placeholder={isConnected ? 
+              `Enter any Base address or use "Analyze My Wallet" below...` : 
+              "Enter Base address to analyze..."
+            }
           />
           
-          <div className={styles.demoSection}>
+          <div className={styles.actionButtons}>
+            {isConnected && connectedAddress && (
+              <button 
+                onClick={handleAnalyzeConnectedWallet}
+                className={styles.walletButton}
+                disabled={loading}
+              >
+                {loading ? 'Analyzing...' : `Analyze My Wallet (${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)})`}
+              </button>
+            )}
+            
             <button 
               onClick={() => setAnalytics(mockAnalyticsData)}
               className={styles.demoButton}
@@ -76,6 +102,12 @@ export default function Home() {
             >
               View Demo Analytics
             </button>
+            
+            {!isConnected && (
+              <p className={styles.walletHint}>
+                💡 Connect your wallet above to analyze your own address instantly!
+              </p>
+            )}
           </div>
           
           {error && (
