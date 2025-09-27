@@ -40,23 +40,51 @@ export class AnalyticsService {
   }
 
   /**
+   * Test method to debug Basescan API
+   */
+  async testBasescanAPI(address: string): Promise<any> {
+    try {
+      const checksumAddress = getAddress(address);
+      console.log('🧪 Testing Basescan API...');
+      
+      // Test URL without API key first
+      let testUrl = `${BASESCAN_API_URL}?module=account&action=balance&address=${checksumAddress}&tag=latest`;
+      
+      if (API_KEY !== 'YourApiKeyToken') {
+        testUrl += `&apikey=${API_KEY}`;
+      }
+      
+      console.log('🔗 Test URL:', testUrl.replace(API_KEY, 'KEY_HIDDEN'));
+      
+      const response = await fetch(testUrl);
+      const data = await response.json();
+      
+      console.log('📋 Test response:', data);
+      return data;
+    } catch (error) {
+      console.error('❌ Test failed:', error);
+      return null;
+    }
+  }
+
+  /**
    * Fetches transaction history using Basescan API
    */
   private async fetchTransactionHistory(address: string): Promise<Transaction[]> {
-    // Check if we have a valid API key
-    if (API_KEY === 'YourApiKeyToken') {
-      console.warn('⚠️ No API key found, using basic RPC method...');
-      console.log('💡 To get real data, add NEXT_PUBLIC_ETHERSCAN_API_KEY to your .env.local file');
-      return await this.fetchBasicTransactions(address);
-    }
-
     try {
       const checksumAddress = getAddress(address);
       console.log(`🔍 Fetching transaction history from Basescan for: ${checksumAddress}`);
-      console.log('🔑 Using API key:', API_KEY.substring(0, 8) + '...');
       
-      // Start with just normal transactions to test
-      const normalTxUrl = `${BASESCAN_API_URL}?module=account&action=txlist&address=${checksumAddress}&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=${API_KEY}`;
+      // First, let's test without API key to see if that works
+      let normalTxUrl = `${BASESCAN_API_URL}?module=account&action=txlist&address=${checksumAddress}&startblock=0&endblock=99999999&page=1&offset=10&sort=desc`;
+      
+      // Add API key only if we have one
+      if (API_KEY !== 'YourApiKeyToken') {
+        normalTxUrl += `&apikey=${API_KEY}`;
+        console.log('🔑 Using API key:', API_KEY.substring(0, 8) + '...');
+      } else {
+        console.log('🔓 Testing without API key first...');
+      }
       
       console.log('📡 Calling Basescan API...');
       console.log('🔗 URL:', normalTxUrl.replace(API_KEY, 'API_KEY_HIDDEN'));

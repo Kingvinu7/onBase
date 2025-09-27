@@ -28,6 +28,11 @@ export default function Home() {
 
     try {
       const analyticsService = AnalyticsService.getInstance();
+      
+      // First test the API
+      console.log('🧪 Testing Basescan API connection...');
+      await analyticsService.testBasescanAPI(address);
+      
       const result = await analyticsService.analyzeAddress(address);
       setAnalytics(result);
     } catch (err) {
