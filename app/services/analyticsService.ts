@@ -1,6 +1,5 @@
 import { createPublicClient, http, isAddress, formatEther, getAddress } from 'viem';
 import { base } from 'viem/chains';
-import { Alchemy, Network } from 'alchemy-sdk';
 import type { 
   Transaction, 
   AddressAnalytics, 
@@ -20,31 +19,6 @@ const publicClient = createPublicClient({
   transport: http()
 });
 
-// Initialize Alchemy SDK for Base network
-const alchemy = new Alchemy({
-  apiKey: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || 'demo',
-  network: Network.BASE_MAINNET,
-});
-
-// Alternative: Direct RPC calls if needed
-const alchemyRpc = {
-  url: `https://base-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`,
-  
-  async getBlockByNumber(blockNumber: string) {
-    const response = await fetch(this.url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'eth_getBlockByNumber',
-        params: [blockNumber, true],
-        id: 1,
-      }),
-    });
-    return response.json();
-  }
-};
-
 export class AnalyticsService {
   private static instance: AnalyticsService;
   
@@ -53,20 +27,6 @@ export class AnalyticsService {
       AnalyticsService.instance = new AnalyticsService();
     }
     return AnalyticsService.instance;
-  }
-
-  /**
-   * Helper function to safely extract timestamp from transfer
-   */
-  private getTransferTimestamp(transfer: any): number {
-    // Try to get timestamp from metadata first
-    if (transfer.metadata?.blockTimestamp) {
-      return new Date(transfer.metadata.blockTimestamp).getTime() / 1000;
-    }
-    
-    // Fallback to current time if metadata is missing
-    console.warn(`Missing blockTimestamp for transfer ${transfer.hash}, using current time`);
-    return Date.now() / 1000;
   }
 
   /**
@@ -79,43 +39,36 @@ export class AnalyticsService {
   /**
    * Fetches transaction history using Basescan API
    */
-  private async fetchTransactionHistoryBasescan(address: string): Promise<Transaction[]> {
+  private async fetchTransactionHistory(address: string): Promise<Transaction[]> {
     try {
       const checksumAddress = getAddress(address);
       console.log(`🔍 Fetching transaction history from Basescan for: ${checksumAddress}`);
       
-      // Fetch normal transactions
-      const normalTxUrl = `${BASESCAN_API_URL}?module=account&action=txlist&address=${checksumAddress}&startblock=0&endblock=99999999&page=1&offset=1000&sort=desc&apikey=${BASESCAN_API_KEY}`;
+      // Start with just normal transactions to test
+      const normalTxUrl = `${BASESCAN_API_URL}?module=account&action=txlist&address=${checksumAddress}&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=${BASESCAN_API_KEY}`;
       
-      // Fetch internal transactions
-      const internalTxUrl = `${BASESCAN_API_URL}?module=account&action=txlistinternal&address=${checksumAddress}&startblock=0&endblock=99999999&page=1&offset=1000&sort=desc&apikey=${BASESCAN_API_KEY}`;
+      console.log('📡 Calling Basescan API...');
+      const response = await fetch(normalTxUrl);
       
-      // Fetch ERC20 token transfers
-      const erc20TxUrl = `${BASESCAN_API_URL}?module=account&action=tokentx&address=${checksumAddress}&startblock=0&endblock=99999999&page=1&offset=1000&sort=desc&apikey=${BASESCAN_API_KEY}`;
+      if (!response.ok) {
+        throw new Error(`Basescan API failed: ${response.status} ${response.statusText}`);
+      }
 
-      const [normalResponse, internalResponse, erc20Response] = await Promise.all([
-        fetch(normalTxUrl),
-        fetch(internalTxUrl),
-        fetch(erc20TxUrl)
-      ]);
-
-      const [normalData, internalData, erc20Data] = await Promise.all([
-        normalResponse.json(),
-        internalResponse.json(),
-        erc20Response.json()
-      ]);
-
-      console.log(`📊 Basescan data:`, {
-        normal: normalData.result?.length || 0,
-        internal: internalData.result?.length || 0,
-        erc20: erc20Data.result?.length || 0
+      const data = await response.json();
+      
+      console.log('📋 Basescan response:', {
+        status: data.status,
+        message: data.message,
+        resultCount: data.result?.length || 0
       });
 
       const transactions: Transaction[] = [];
 
       // Process normal transactions
-      if (normalData.status === '1' && normalData.result) {
-        for (const tx of normalData.result) {
+      if (data.status === '1' && data.result && Array.isArray(data.result)) {
+        console.log(`📊 Processing ${data.result.length} transactions...`);
+        
+        for (const tx of data.result) {
           transactions.push({
             hash: tx.hash,
             blockNumber: BigInt(tx.blockNumber),
@@ -129,46 +82,15 @@ export class AnalyticsService {
             isContractInteraction: tx.input !== '0x',
           });
         }
-      }
-
-      // Process internal transactions
-      if (internalData.status === '1' && internalData.result) {
-        for (const tx of internalData.result) {
-          // Avoid duplicates
-          if (!transactions.find(t => t.hash === tx.hash)) {
-            transactions.push({
-              hash: tx.hash,
-              blockNumber: BigInt(tx.blockNumber),
-              timestamp: parseInt(tx.timeStamp),
-              from: tx.from,
-              to: tx.to || null,
-              value: BigInt(tx.value),
-              gasUsed: BigInt(tx.gasUsed || '0'),
-              gasPrice: BigInt('0'), // Internal txs don't have gas price
-              status: 'success',
-              isContractInteraction: true,
-            });
-          }
-        }
-      }
-
-      // Process ERC20 token transfers (add as separate transactions)
-      if (erc20Data.status === '1' && erc20Data.result) {
-        for (const tx of erc20Data.result) {
-          // Only add if not already present
-          if (!transactions.find(t => t.hash === tx.hash)) {
-            transactions.push({
-              hash: tx.hash,
-              blockNumber: BigInt(tx.blockNumber),
-              timestamp: parseInt(tx.timeStamp),
-              from: tx.from,
-              to: tx.to || null,
-              value: BigInt(0), // ERC20 transfers don't affect ETH balance
-              gasUsed: BigInt(tx.gasUsed || '0'),
-              gasPrice: BigInt(tx.gasPrice || '0'),
-              status: 'success',
-              isContractInteraction: true,
-            });
+      } else {
+        console.warn('⚠️ Basescan returned no results or error:', data.message);
+        if (data.status === '0') {
+          // Status 0 might mean no transactions (which is valid) or an error
+          if (data.message === 'No transactions found') {
+            console.log('✅ Address has no transactions (valid result)');
+            return [];
+          } else {
+            throw new Error(`Basescan API error: ${data.message}`);
           }
         }
       }
@@ -177,131 +99,26 @@ export class AnalyticsService {
       return transactions.sort((a, b) => b.timestamp - a.timestamp);
     } catch (error) {
       console.error('❌ Error fetching from Basescan:', error);
-      throw error;
+      
+      // Simple fallback using basic RPC
+      console.log('🔄 Using basic RPC fallback...');
+      return this.fetchBasicTransactions(address);
     }
   }
 
   /**
-   * Simple test method to check if Alchemy is working
+   * Simple fallback using basic RPC calls
    */
-  async testAlchemyConnection(address: string): Promise<any> {
-    try {
-      console.log('🧪 Testing Alchemy connection...');
-      const checksumAddress = getAddress(address);
-      
-      // Simple test - just get transfers without processing
-      const transfers = await alchemy.core.getAssetTransfers({
-        fromAddress: checksumAddress,
-        category: ['external'],
-        maxCount: 10,
-        order: 'desc'
-      });
-      
-      console.log('✅ Alchemy test successful:', transfers);
-      return transfers;
-    } catch (error) {
-      console.error('❌ Alchemy test failed:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Fetches comprehensive transaction history using Alchemy
-   */
-  private async fetchTransactionHistory(address: string): Promise<Transaction[]> {
-    try {
-      // Try Basescan first (more reliable for Base network)
-      console.log('🎯 Using Basescan as primary data source...');
-      return await this.fetchTransactionHistoryBasescan(address);
-    } catch (basescanError) {
-      console.warn('⚠️ Basescan failed, trying Alchemy...', basescanError);
-      
-      try {
-        return await this.fetchTransactionHistoryAlchemy(address);
-      } catch (alchemyError) {
-        console.warn('⚠️ Alchemy failed, using basic RPC...', alchemyError);
-        return await this.fetchTransactionHistoryFallback(address);
-      }
-    }
-  }
-
-  /**
-   * Alternative method using direct Alchemy RPC calls
-   */
-  private async fetchTransactionHistoryRPC(address: string): Promise<Transaction[]> {
-    try {
-      const checksumAddress = getAddress(address);
-      const transactions: Transaction[] = [];
-
-      // Get recent blocks using eth_getBlockByNumber
-      const latestBlockResponse = await fetch(alchemyRpc.url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'eth_blockNumber',
-          params: [],
-          id: 1,
-        }),
-      });
-      
-      const latestBlockData = await latestBlockResponse.json();
-      const latestBlock = parseInt(latestBlockData.result, 16);
-
-      // Check last 100 blocks for transactions
-      for (let i = 0; i < 100; i++) {
-        const blockNumber = `0x${(latestBlock - i).toString(16)}`;
-        
-        const blockResponse = await fetch(alchemyRpc.url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            method: 'eth_getBlockByNumber',
-            params: [blockNumber, true],
-            id: 1,
-          }),
-        });
-
-        const blockData = await blockResponse.json();
-        if (blockData.result?.transactions) {
-          for (const tx of blockData.result.transactions) {
-            if (tx.from === checksumAddress || tx.to === checksumAddress) {
-              transactions.push({
-                hash: tx.hash,
-                blockNumber: BigInt(parseInt(tx.blockNumber, 16)),
-                timestamp: parseInt(blockData.result.timestamp, 16),
-                from: tx.from,
-                to: tx.to,
-                value: BigInt(tx.value),
-                gasUsed: BigInt(parseInt(tx.gas, 16)),
-                gasPrice: BigInt(parseInt(tx.gasPrice || '0x0', 16)),
-                status: 'success',
-                isContractInteraction: tx.to !== null && tx.input !== '0x',
-              });
-            }
-          }
-        }
-      }
-
-      return transactions.sort((a, b) => b.timestamp - a.timestamp);
-    } catch (error) {
-      console.error('Error fetching with RPC calls:', error);
-      return this.fetchTransactionHistoryFallback(address);
-    }
-  }
-
-  /**
-   * Fallback method using basic RPC calls
-   */
-  private async fetchTransactionHistoryFallback(address: string): Promise<Transaction[]> {
+  private async fetchBasicTransactions(address: string): Promise<Transaction[]> {
     try {
       const checksumAddress = getAddress(address);
       const currentBlock = await publicClient.getBlockNumber();
       const transactions: Transaction[] = [];
       
+      console.log('🔄 Checking recent blocks for transactions...');
+      
       // Check recent blocks as fallback
-      for (let i = 0; i < 50; i++) {
+      for (let i = 0; i < 20; i++) {
         const blockNumber = currentBlock - BigInt(i);
         try {
           const block = await publicClient.getBlock({ 
@@ -332,9 +149,10 @@ export class AnalyticsService {
         }
       }
       
+      console.log(`🔄 Basic RPC: Found ${transactions.length} transactions`);
       return transactions.sort((a, b) => b.timestamp - a.timestamp);
     } catch (error) {
-      console.error('Error in fallback method:', error);
+      console.error('❌ Error in basic RPC method:', error);
       return [];
     }
   }
@@ -493,12 +311,15 @@ export class AnalyticsService {
 
     try {
       const checksumAddress = getAddress(address);
+      console.log(`🚀 Starting analysis for: ${checksumAddress}`);
       
       // Fetch data in parallel
       const [transactions, ethBalance] = await Promise.all([
         this.fetchTransactionHistory(checksumAddress),
         this.getBalance(checksumAddress),
       ]);
+
+      console.log(`📊 Analysis data: ${transactions.length} transactions, ${AnalyticsService.formatEth(ethBalance)} ETH balance`);
 
       // Calculate analytics
       const dailyActivity = this.calculateDailyActivity(transactions);
@@ -522,7 +343,7 @@ export class AnalyticsService {
       const firstTx = transactions[transactions.length - 1];
       const lastTx = transactions[0];
 
-      return {
+      const result = {
         address: checksumAddress,
         totalTransactions: transactions.length,
         firstTransactionDate: firstTx ? new Date(firstTx.timestamp * 1000).toISOString().split('T')[0] : null,
@@ -545,12 +366,94 @@ export class AnalyticsService {
           to: new Date().toISOString().split('T')[0],
         },
       };
+
+      console.log('✅ Analysis complete:', {
+        transactions: result.totalTransactions,
+        activeDays: result.activeDays,
+        currentStreak: result.activityStreak.currentStreak
+      });
+
+      return result;
     } catch (error) {
-      console.error('Error analyzing address:', error);
+      console.error('❌ Error analyzing address:', error);
       throw {
         message: error instanceof Error ? error.message : 'Unknown error occurred',
         code: 'UNKNOWN',
       } as AnalyticsError;
+    }
+  }
+
+  /**
+   * Fetches transaction history using Basescan API
+   */
+  private async fetchTransactionHistoryBasescan(address: string): Promise<Transaction[]> {
+    try {
+      const checksumAddress = getAddress(address);
+      console.log(`🔍 Fetching from Basescan for: ${checksumAddress}`);
+      
+      // Fetch normal transactions first
+      const normalTxUrl = `${BASESCAN_API_URL}?module=account&action=txlist&address=${checksumAddress}&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=${BASESCAN_API_KEY}`;
+      
+      console.log('📡 Calling Basescan...');
+      const response = await fetch(normalTxUrl);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      console.log('📋 Basescan response:', {
+        status: data.status,
+        message: data.message,
+        count: data.result?.length || 0
+      });
+
+      const transactions: Transaction[] = [];
+
+      if (data.status === '1' && data.result && Array.isArray(data.result)) {
+        for (const tx of data.result) {
+          transactions.push({
+            hash: tx.hash,
+            blockNumber: BigInt(tx.blockNumber),
+            timestamp: parseInt(tx.timeStamp),
+            from: tx.from,
+            to: tx.to || null,
+            value: BigInt(tx.value),
+            gasUsed: BigInt(tx.gasUsed),
+            gasPrice: BigInt(tx.gasPrice),
+            status: tx.txreceipt_status === '1' ? 'success' : 'failed',
+            isContractInteraction: tx.input !== '0x',
+          });
+        }
+      } else if (data.status === '0' && data.message === 'No transactions found') {
+        console.log('✅ No transactions found (valid result)');
+        return [];
+      } else {
+        throw new Error(`Basescan error: ${data.message || 'Unknown error'}`);
+      }
+
+      console.log(`✅ Successfully processed ${transactions.length} transactions`);
+      return transactions.sort((a, b) => b.timestamp - a.timestamp);
+    } catch (error) {
+      console.error('❌ Basescan fetch failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets the current ETH balance for an address
+   */
+  private async getBalance(address: string): Promise<bigint> {
+    try {
+      const balance = await publicClient.getBalance({ 
+        address: getAddress(address) 
+      });
+      console.log(`💰 Balance: ${AnalyticsService.formatEth(balance)} ETH`);
+      return balance;
+    } catch (error) {
+      console.error('Error fetching balance:', error);
+      return BigInt(0);
     }
   }
 
