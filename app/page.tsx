@@ -30,8 +30,8 @@ export default function Home() {
       const analyticsService = AnalyticsService.getInstance();
       
       // First test the API
-      console.log('🧪 Testing Basescan API connection...');
-      await analyticsService.testBasescanAPI(address);
+      console.log('🧪 Testing Etherscan v2 API connection...');
+      await analyticsService.testEtherscanAPI(address);
       
       const result = await analyticsService.analyzeAddress(address);
       setAnalytics(result);

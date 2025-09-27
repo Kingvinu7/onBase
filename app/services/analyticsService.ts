@@ -9,9 +9,10 @@ import type {
   AnalyticsError 
 } from '../types/analytics';
 
-// For now, let's use the public Base RPC without API keys
-// Basescan requires a separate API key, Etherscan doesn't have Base data
-const API_KEY = process.env.NEXT_PUBLIC_BASESCAN_API_KEY || 'demo';
+// Etherscan v2 API supports Base network with chainid=8453
+const ETHERSCAN_V2_API_URL = 'https://api.etherscan.io/v2/api';
+const BASE_CHAIN_ID = '8453';
+const API_KEY = process.env.NEXT_PUBLIC_ETHERSCAN_API_KEY || 'YourApiKeyToken';
 
 // Create a public client for Base network
 const publicClient = createPublicClient({
@@ -37,18 +38,19 @@ export class AnalyticsService {
   }
 
   /**
-   * Test method to debug Basescan API
+   * Test method to debug Etherscan v2 API for Base
    */
-  async testBasescanAPI(address: string): Promise<any> {
+  async testEtherscanAPI(address: string): Promise<any> {
     try {
       const checksumAddress = getAddress(address);
-      console.log('🧪 Testing Basescan API...');
+      console.log('🧪 Testing Etherscan v2 API for Base...');
       
-      // Test URL without API key first
-      let testUrl = `${BASESCAN_API_URL}?module=account&action=balance&address=${checksumAddress}&tag=latest`;
+      // Test balance endpoint with Base chain ID
+      let testUrl = `${ETHERSCAN_V2_API_URL}?chainid=${BASE_CHAIN_ID}&module=account&action=balance&address=${checksumAddress}&tag=latest`;
       
       if (API_KEY !== 'YourApiKeyToken') {
         testUrl += `&apikey=${API_KEY}`;
+        console.log('🔑 Using Etherscan API key:', API_KEY.substring(0, 8) + '...');
       }
       
       console.log('🔗 Test URL:', testUrl.replace(API_KEY, 'KEY_HIDDEN'));
@@ -56,44 +58,56 @@ export class AnalyticsService {
       const response = await fetch(testUrl);
       const data = await response.json();
       
-      console.log('📋 Test response:', data);
+      console.log('📋 Etherscan v2 response:', data);
       return data;
     } catch (error) {
-      console.error('❌ Test failed:', error);
+      console.error('❌ Etherscan test failed:', error);
       return null;
     }
   }
 
   /**
-   * Fetches transaction history using Basescan API
+   * Main transaction history fetching method
    */
   private async fetchTransactionHistory(address: string): Promise<Transaction[]> {
+    // Check if we have an Etherscan API key
+    if (API_KEY !== 'YourApiKeyToken') {
+      try {
+        console.log('🎯 Using Etherscan v2 API for Base network...');
+        return await this.fetchTransactionHistoryEtherscan(address);
+      } catch (etherscanError) {
+        console.warn('⚠️ Etherscan v2 failed, using enhanced RPC...', etherscanError);
+        return await this.fetchBasicTransactions(address);
+      }
+    } else {
+      console.log('🎯 No API key found, using enhanced RPC method...');
+      return await this.fetchBasicTransactions(address);
+    }
+  }
+
+  /**
+   * Fetches transaction history using Etherscan v2 API for Base
+   */
+  private async fetchTransactionHistoryEtherscan(address: string): Promise<Transaction[]> {
     try {
       const checksumAddress = getAddress(address);
-      console.log(`🔍 Fetching transaction history from Basescan for: ${checksumAddress}`);
+      console.log(`🔍 Fetching from Etherscan v2 for Base: ${checksumAddress}`);
       
-      // First, let's test without API key to see if that works
-      let normalTxUrl = `${BASESCAN_API_URL}?module=account&action=txlist&address=${checksumAddress}&startblock=0&endblock=99999999&page=1&offset=10&sort=desc`;
+      // Fetch normal transactions using Etherscan v2 API with Base chain ID
+      const normalTxUrl = `${ETHERSCAN_V2_API_URL}?chainid=${BASE_CHAIN_ID}&module=account&action=txlist&address=${checksumAddress}&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=${API_KEY}`;
       
-      // Add API key only if we have one
-      if (API_KEY !== 'YourApiKeyToken') {
-        normalTxUrl += `&apikey=${API_KEY}`;
-        console.log('🔑 Using API key:', API_KEY.substring(0, 8) + '...');
-      } else {
-        console.log('🔓 Testing without API key first...');
-      }
-      
-      console.log('📡 Calling Basescan API...');
+      console.log('📡 Calling Etherscan v2 API...');
       console.log('🔗 URL:', normalTxUrl.replace(API_KEY, 'API_KEY_HIDDEN'));
+      
       const response = await fetch(normalTxUrl);
       
       if (!response.ok) {
-        throw new Error(`Basescan API failed: ${response.status} ${response.statusText}`);
+        throw new Error(`Etherscan v2 API failed: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
       
-      console.log('📋 Basescan response:', {
+      console.log('📋 Etherscan v2 response:', {
         status: data.status,
         message: data.message,
         resultCount: data.result?.length || 0
@@ -101,9 +115,8 @@ export class AnalyticsService {
 
       const transactions: Transaction[] = [];
 
-      // Process normal transactions
       if (data.status === '1' && data.result && Array.isArray(data.result)) {
-        console.log(`📊 Processing ${data.result.length} transactions...`);
+        console.log(`📊 Processing ${data.result.length} transactions from Etherscan v2...`);
         
         for (const tx of data.result) {
           transactions.push({
@@ -119,27 +132,22 @@ export class AnalyticsService {
             isContractInteraction: tx.input !== '0x',
           });
         }
-      } else {
-        console.warn('⚠️ Basescan returned no results or error:', data.message);
-        if (data.status === '0') {
-          // Status 0 might mean no transactions (which is valid) or an error
-          if (data.message === 'No transactions found') {
-            console.log('✅ Address has no transactions (valid result)');
-            return [];
-          } else {
-            throw new Error(`Basescan API error: ${data.message}`);
-          }
+      } else if (data.status === '0') {
+        if (data.message === 'No transactions found') {
+          console.log('✅ No transactions found (valid result)');
+          return [];
+        } else if (data.message === 'NOTOK') {
+          throw new Error('❌ API Key Error: Please check your NEXT_PUBLIC_ETHERSCAN_API_KEY in .env.local');
+        } else {
+          throw new Error(`Etherscan v2 API error: ${data.message || 'Unknown error'}`);
         }
       }
 
-      console.log(`✅ Basescan: Found ${transactions.length} total transactions`);
+      console.log(`✅ Etherscan v2: Found ${transactions.length} total transactions`);
       return transactions.sort((a, b) => b.timestamp - a.timestamp);
     } catch (error) {
-      console.error('❌ Error fetching from Basescan:', error);
-      
-      // Simple fallback using basic RPC
-      console.log('🔄 Using enhanced RPC method (no API key needed)...');
-      return this.fetchBasicTransactions(address);
+      console.error('❌ Error fetching from Etherscan v2:', error);
+      throw error;
     }
   }
 
@@ -153,11 +161,11 @@ export class AnalyticsService {
       const transactions: Transaction[] = [];
       
       console.log(`🔄 Using Base RPC directly for: ${checksumAddress}`);
-      console.log(`📊 Current block: ${currentBlock}, checking last 2000 blocks...`);
+      console.log(`📊 Current block: ${currentBlock}, checking last 1000 blocks...`);
       
-      // Check more blocks and process in batches for better performance
-      const blocksToCheck = 2000;
-      const batchSize = 100;
+      // Check blocks in smaller batches for better performance
+      const blocksToCheck = 1000;
+      const batchSize = 50;
       
       for (let batch = 0; batch < blocksToCheck / batchSize; batch++) {
         const batchPromises = [];
@@ -170,7 +178,7 @@ export class AnalyticsService {
               publicClient.getBlock({ 
                 blockNumber, 
                 includeTransactions: true 
-              }).catch(() => null) // Handle individual block failures
+              }).catch(() => null)
             );
           }
         }
@@ -189,7 +197,7 @@ export class AnalyticsService {
                   from: tx.from,
                   to: tx.to,
                   value: tx.value,
-                  gasUsed: BigInt(0), // Will be filled by receipt if needed
+                  gasUsed: BigInt(0),
                   gasPrice: tx.gasPrice || BigInt(0),
                   status: 'success',
                   isContractInteraction: tx.to !== null && tx.input !== '0x',
@@ -199,7 +207,7 @@ export class AnalyticsService {
           }
         });
         
-        // Log progress every few batches
+        // Log progress
         if (batch % 5 === 0) {
           console.log(`📈 Progress: ${batch * batchSize}/${blocksToCheck} blocks, ${transactions.length} transactions found`);
         }
@@ -211,27 +219,10 @@ export class AnalyticsService {
         }
       }
       
-      // Get gas data for recent transactions
-      if (transactions.length > 0) {
-        console.log('⛽ Getting gas data for recent transactions...');
-        const recentTxs = transactions.slice(0, 10); // Just get gas for recent ones
-        
-        for (const tx of recentTxs) {
-          try {
-            const receipt = await publicClient.getTransactionReceipt({ hash: tx.hash });
-            tx.gasUsed = receipt.gasUsed;
-            tx.status = receipt.status === 'success' ? 'success' : 'failed';
-          } catch (error) {
-            // Skip if receipt fetch fails
-            continue;
-          }
-        }
-      }
-      
-      console.log(`✅ Enhanced RPC: Found ${transactions.length} total transactions`);
+      console.log(`✅ RPC: Found ${transactions.length} total transactions`);
       return transactions.sort((a, b) => b.timestamp - a.timestamp);
     } catch (error) {
-      console.error('❌ Error in enhanced RPC method:', error);
+      console.error('❌ Error in RPC method:', error);
       return [];
     }
   }
@@ -244,6 +235,7 @@ export class AnalyticsService {
       const balance = await publicClient.getBalance({ 
         address: getAddress(address) 
       });
+      console.log(`💰 Balance: ${AnalyticsService.formatEth(balance)} ETH`);
       return balance;
     } catch (error) {
       console.error('Error fetching balance:', error);
@@ -327,8 +319,6 @@ export class AnalyticsService {
     let currentStreak = 0;
     let longestStreak = 0;
     let currentStreakStart: string | null = null;
-    let _longestStreakStart: string | null = null;
-    let _longestStreakEnd: string | null = null;
     
     const today = new Date().toISOString().split('T')[0];
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -346,11 +336,9 @@ export class AnalyticsService {
         if (diffDays === 1) {
           currentStreak++;
         } else {
-        if (currentStreak > longestStreak) {
-          longestStreak = currentStreak;
-          _longestStreakStart = currentStreakStart;
-          _longestStreakEnd = sortedDays[i - 1].date;
-        }
+          if (currentStreak > longestStreak) {
+            longestStreak = currentStreak;
+          }
           currentStreak = 1;
           currentStreakStart = sortedDays[i].date;
         }
@@ -360,11 +348,9 @@ export class AnalyticsService {
     // Check final streak
     if (currentStreak > longestStreak) {
       longestStreak = currentStreak;
-      _longestStreakStart = currentStreakStart;
-      _longestStreakEnd = sortedDays[sortedDays.length - 1].date;
     }
     
-    // Determine if current streak is active (last activity was today or yesterday)
+    // Determine if current streak is active
     const lastActivityDate = sortedDays[sortedDays.length - 1].date;
     const isActive = lastActivityDate === today || lastActivityDate === yesterday;
     
@@ -391,6 +377,13 @@ export class AnalyticsService {
     try {
       const checksumAddress = getAddress(address);
       console.log(`🚀 Starting analysis for: ${checksumAddress}`);
+      
+      // Check if we have an API key
+      if (API_KEY !== 'YourApiKeyToken') {
+        console.log('🔑 API key detected, will try Etherscan v2...');
+      } else {
+        console.log('🔓 No API key, will use RPC method...');
+      }
       
       // Fetch data in parallel
       const [transactions, ethBalance] = await Promise.all([
@@ -463,36 +456,38 @@ export class AnalyticsService {
   }
 
   /**
-   * Fetches transaction history using Basescan API
+   * Fetches transaction history using Etherscan v2 API for Base
    */
-  private async fetchTransactionHistoryBasescan(address: string): Promise<Transaction[]> {
+  private async fetchTransactionHistoryEtherscan(address: string): Promise<Transaction[]> {
     try {
       const checksumAddress = getAddress(address);
-      console.log(`🔍 Fetching from Basescan for: ${checksumAddress}`);
+      console.log(`🔍 Fetching from Etherscan v2 for Base: ${checksumAddress}`);
       
-      // Fetch normal transactions first
-      const normalTxUrl = `${BASESCAN_API_URL}?module=account&action=txlist&address=${checksumAddress}&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=${API_KEY}`;
+      // Fetch normal transactions using Etherscan v2 API with Base chain ID
+      const normalTxUrl = `${ETHERSCAN_V2_API_URL}?chainid=${BASE_CHAIN_ID}&module=account&action=txlist&address=${checksumAddress}&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=${API_KEY}`;
       
-      console.log('🔑 Using API key:', API_KEY.substring(0, 8) + '...');
+      console.log('📡 Calling Etherscan v2 API...');
+      console.log('🔗 URL:', normalTxUrl.replace(API_KEY, 'API_KEY_HIDDEN'));
       
-      console.log('📡 Calling Basescan...');
       const response = await fetch(normalTxUrl);
       
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        throw new Error(`Etherscan v2 API failed: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
       
-      console.log('📋 Basescan response:', {
+      console.log('📋 Etherscan v2 response:', {
         status: data.status,
         message: data.message,
-        count: data.result?.length || 0
+        resultCount: data.result?.length || 0
       });
 
       const transactions: Transaction[] = [];
 
       if (data.status === '1' && data.result && Array.isArray(data.result)) {
+        console.log(`📊 Processing ${data.result.length} transactions from Etherscan v2...`);
+        
         for (const tx of data.result) {
           transactions.push({
             hash: tx.hash,
@@ -512,35 +507,80 @@ export class AnalyticsService {
           console.log('✅ No transactions found (valid result)');
           return [];
         } else if (data.message === 'NOTOK') {
-          throw new Error('❌ API Key Error: Invalid or missing API key. Please check your NEXT_PUBLIC_ETHERSCAN_API_KEY or NEXT_PUBLIC_BASESCAN_API_KEY in .env.local');
+          throw new Error('❌ API Key Error: Please check your NEXT_PUBLIC_ETHERSCAN_API_KEY in .env.local');
         } else {
-          throw new Error(`Basescan API error: ${data.message || 'Unknown error'}`);
+          throw new Error(`Etherscan v2 API error: ${data.message || 'Unknown error'}`);
         }
-      } else {
-        throw new Error(`Unexpected Basescan response: ${JSON.stringify(data)}`);
       }
 
-      console.log(`✅ Successfully processed ${transactions.length} transactions`);
+      console.log(`✅ Etherscan v2: Found ${transactions.length} total transactions`);
       return transactions.sort((a, b) => b.timestamp - a.timestamp);
     } catch (error) {
-      console.error('❌ Basescan fetch failed:', error);
+      console.error('❌ Error fetching from Etherscan v2:', error);
       throw error;
     }
   }
 
   /**
-   * Gets the current ETH balance for an address
+   * Enhanced RPC method using Base network directly
    */
-  private async getBalance(address: string): Promise<bigint> {
+  private async fetchBasicTransactions(address: string): Promise<Transaction[]> {
     try {
-      const balance = await publicClient.getBalance({ 
-        address: getAddress(address) 
-      });
-      console.log(`💰 Balance: ${AnalyticsService.formatEth(balance)} ETH`);
-      return balance;
+      const checksumAddress = getAddress(address);
+      const currentBlock = await publicClient.getBlockNumber();
+      const transactions: Transaction[] = [];
+      
+      console.log(`🔄 Using Base RPC directly for: ${checksumAddress}`);
+      console.log(`📊 Current block: ${currentBlock}, checking last 500 blocks...`);
+      
+      // Check recent blocks for transactions
+      for (let i = 0; i < 500; i++) {
+        const blockNumber = currentBlock - BigInt(i);
+        try {
+          const block = await publicClient.getBlock({ 
+            blockNumber, 
+            includeTransactions: true 
+          });
+          
+          if (block.transactions) {
+            for (const tx of block.transactions) {
+              if (typeof tx === 'object' && (tx.from === checksumAddress || tx.to === checksumAddress)) {
+                transactions.push({
+                  hash: tx.hash,
+                  blockNumber: tx.blockNumber || blockNumber,
+                  timestamp: Number(block.timestamp),
+                  from: tx.from,
+                  to: tx.to,
+                  value: tx.value,
+                  gasUsed: BigInt(0),
+                  gasPrice: tx.gasPrice || BigInt(0),
+                  status: 'success',
+                  isContractInteraction: tx.to !== null && tx.input !== '0x',
+                });
+              }
+            }
+          }
+        } catch (error) {
+          continue;
+        }
+        
+        // Log progress every 100 blocks
+        if (i % 100 === 0 && i > 0) {
+          console.log(`📈 Checked ${i} blocks, found ${transactions.length} transactions`);
+        }
+        
+        // Stop if we found enough
+        if (transactions.length >= 20) {
+          console.log(`🎯 Found ${transactions.length} transactions, stopping search`);
+          break;
+        }
+      }
+      
+      console.log(`✅ RPC: Found ${transactions.length} total transactions`);
+      return transactions.sort((a, b) => b.timestamp - a.timestamp);
     } catch (error) {
-      console.error('Error fetching balance:', error);
-      return BigInt(0);
+      console.error('❌ Error in RPC method:', error);
+      return [];
     }
   }
 
