@@ -59,14 +59,19 @@ export default function Home() {
   return (
     <div className={styles.container}>
       <header className={styles.headerWrapper}>
-        <Wallet />
+        <div className={styles.headerLeft}>
+          <h1 className={styles.appName}>onBase</h1>
+        </div>
+        <div className={styles.headerRight}>
+          <Wallet />
+        </div>
       </header>
 
       <div className={styles.content}>
         {!analytics && !loading && (
           <div className={styles.hero}>
             <div className={styles.heroIcon}>📊</div>
-            <h1 className={styles.title}>Base Analytics</h1>
+            <h1 className={styles.title}>onBase</h1>
             <p className={styles.description}>
               Discover comprehensive insights about any Base address including transaction history, 
               activity patterns, streaks, and more.

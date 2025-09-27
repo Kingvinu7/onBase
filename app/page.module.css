@@ -7,10 +7,37 @@
 
 .headerWrapper {
   display: flex;
-  justify-content: flex-end;
-  padding: 1rem;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+}
+
+.appName {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.appName:hover {
+  transform: scale(1.05);
 }
 
 .content {
@@ -218,6 +245,14 @@
     background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
   }
   
+  .headerWrapper {
+    padding: 1rem;
+  }
+  
+  .appName {
+    font-size: 1.25rem;
+  }
+  
   .content {
     padding: 1rem;
     gap: 1.5rem;
@@ -279,6 +314,14 @@
 }
 
 @media (max-width: 480px) {
+  .headerWrapper {
+    padding: 0.75rem;
+  }
+  
+  .appName {
+    font-size: 1.125rem;
+  }
+  
   .content {
     padding: 0.75rem;
     gap: 1rem;
