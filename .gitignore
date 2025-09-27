@@ -47,3 +47,4 @@ coverage/
 *.tsbuildinfo
 next-env.d.tsnode_modules/
 .next/
+core

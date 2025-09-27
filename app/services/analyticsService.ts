@@ -40,7 +40,7 @@ export class AnalyticsService {
   /**
    * Test method to debug Etherscan v2 API for Base
    */
-  async testEtherscanAPI(address: string): Promise<any> {
+  async testEtherscanAPI(address: string): Promise<unknown> {
     try {
       const checksumAddress = getAddress(address);
       console.log('🧪 Testing Etherscan v2 API for Base...');
@@ -93,7 +93,7 @@ export class AnalyticsService {
       const checksumAddress = getAddress(address);
       console.log(`🔍 Fetching COMPLETE history from Etherscan v2 for Base: ${checksumAddress}`);
       
-      let allTransactions: Transaction[] = [];
+      const allTransactions: Transaction[] = [];
       let page = 1;
       const maxOffset = 10000; // Maximum per page
       
@@ -221,7 +221,7 @@ export class AnalyticsService {
               }
             }
           }
-        } catch (error) {
+        } catch {
           continue;
         }
         
@@ -477,7 +477,7 @@ export class AnalyticsService {
       const checksumAddress = getAddress(address);
       console.log(`🔍 Fetching COMPLETE history from Etherscan v2 for Base: ${checksumAddress}`);
       
-      let allTransactions: Transaction[] = [];
+      const allTransactions: Transaction[] = [];
       let page = 1;
       const maxOffset = 10000; // Maximum per page
       
