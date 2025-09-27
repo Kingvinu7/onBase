@@ -54,21 +54,15 @@ export class AnalyticsService {
   /**
    * Helper function to safely extract timestamp from transfer
    */
-  private async getTransferTimestamp(transfer: any): Promise<number> {
+  private getTransferTimestamp(transfer: any): number {
     // Try to get timestamp from metadata first
     if (transfer.metadata?.blockTimestamp) {
       return new Date(transfer.metadata.blockTimestamp).getTime() / 1000;
     }
     
-    // Fallback: get timestamp from block
-    try {
-      const block = await alchemy.core.getBlock(transfer.blockNum);
-      return block.timestamp;
-    } catch (error) {
-      console.warn(`Failed to get block timestamp for block ${transfer.blockNum}:`, error);
-      // Use current time as last resort
-      return Date.now() / 1000;
-    }
+    // Fallback to current time if metadata is missing
+    console.warn(`Missing blockTimestamp for transfer ${transfer.hash}, using current time`);
+    return Date.now() / 1000;
   }
 
   /**
@@ -79,15 +73,41 @@ export class AnalyticsService {
   }
 
   /**
+   * Simple test method to check if Alchemy is working
+   */
+  async testAlchemyConnection(address: string): Promise<any> {
+    try {
+      console.log('🧪 Testing Alchemy connection...');
+      const checksumAddress = getAddress(address);
+      
+      // Simple test - just get transfers without processing
+      const transfers = await alchemy.core.getAssetTransfers({
+        fromAddress: checksumAddress,
+        category: ['external'],
+        maxCount: 10,
+        order: 'desc'
+      });
+      
+      console.log('✅ Alchemy test successful:', transfers);
+      return transfers;
+    } catch (error) {
+      console.error('❌ Alchemy test failed:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Fetches comprehensive transaction history using Alchemy
    */
   private async fetchTransactionHistory(address: string): Promise<Transaction[]> {
     try {
       const checksumAddress = getAddress(address);
+      console.log(`🔍 Fetching transaction history for: ${checksumAddress}`);
       const transactions: Transaction[] = [];
       
       // Fetch transfers (both sent and received)
       // Note: Base network doesn't support 'internal' category
+      console.log('📡 Calling Alchemy getAssetTransfers...');
       const [sentTxs, receivedTxs] = await Promise.all([
         alchemy.core.getAssetTransfers({
           fromAddress: checksumAddress,
@@ -103,45 +123,24 @@ export class AnalyticsService {
         })
       ]);
 
-      // Process sent transactions
+      // Process sent transactions - simplified approach
+      console.log(`📤 Processing ${sentTxs.transfers.length} sent transfers...`);
       for (const transfer of sentTxs.transfers) {
         if (transfer.hash) {
-          try {
-            const [receipt, tx] = await Promise.all([
-              alchemy.core.getTransactionReceipt(transfer.hash),
-              alchemy.core.getTransaction(transfer.hash)
-            ]);
-            const timestamp = await this.getTransferTimestamp(transfer);
-            
-            transactions.push({
-              hash: transfer.hash,
-              blockNumber: BigInt(transfer.blockNum),
-              timestamp,
-              from: transfer.from,
-              to: transfer.to || null,
-              value: BigInt(Math.floor((transfer.value || 0) * 1e18)),
-              gasUsed: BigInt(receipt?.gasUsed?.toString() || '0'),
-              gasPrice: BigInt(tx?.gasPrice?.toString() || '0'),
-              status: receipt?.status === 1 ? 'success' : 'failed',
-              isContractInteraction: transfer.category !== 'external',
-            });
-          } catch (error) {
-            console.warn(`Failed to get details for transaction ${transfer.hash}:`, error);
-            // Add transaction with basic info even if receipt/tx fetch fails
-            const timestamp = await this.getTransferTimestamp(transfer);
-            transactions.push({
-              hash: transfer.hash,
-              blockNumber: BigInt(transfer.blockNum),
-              timestamp,
-              from: transfer.from,
-              to: transfer.to || null,
-              value: BigInt(Math.floor((transfer.value || 0) * 1e18)),
-              gasUsed: BigInt(0),
-              gasPrice: BigInt(0),
-              status: 'success',
-              isContractInteraction: transfer.category !== 'external',
-            });
-          }
+          const timestamp = this.getTransferTimestamp(transfer);
+          
+          transactions.push({
+            hash: transfer.hash,
+            blockNumber: BigInt(transfer.blockNum),
+            timestamp,
+            from: transfer.from,
+            to: transfer.to || null,
+            value: BigInt(Math.floor((transfer.value || 0) * 1e18)),
+            gasUsed: BigInt(0), // Will get this later if needed
+            gasPrice: BigInt(0), // Will get this later if needed
+            status: 'success',
+            isContractInteraction: transfer.category !== 'external',
+          });
         }
       }
 
@@ -149,48 +148,29 @@ export class AnalyticsService {
       const existingHashes = new Set(transactions.map(tx => tx.hash));
       for (const transfer of receivedTxs.transfers) {
         if (transfer.hash && !existingHashes.has(transfer.hash)) {
-          try {
-            const [receipt, tx] = await Promise.all([
-              alchemy.core.getTransactionReceipt(transfer.hash),
-              alchemy.core.getTransaction(transfer.hash)
-            ]);
-            
-            transactions.push({
-              hash: transfer.hash,
-              blockNumber: BigInt(transfer.blockNum),
-              timestamp: transfer.metadata?.blockTimestamp ? new Date(transfer.metadata.blockTimestamp).getTime() / 1000 : Date.now() / 1000,
-              from: transfer.from,
-              to: transfer.to || null,
-              value: BigInt(Math.floor((transfer.value || 0) * 1e18)),
-              gasUsed: BigInt(receipt?.gasUsed?.toString() || '0'),
-              gasPrice: BigInt(tx?.gasPrice?.toString() || '0'),
-              status: receipt?.status === 1 ? 'success' : 'failed',
-              isContractInteraction: transfer.category !== 'external',
-            });
-          } catch (error) {
-            console.warn(`Failed to get details for transaction ${transfer.hash}:`, error);
-            // Add transaction with basic info even if receipt/tx fetch fails
-            const timestamp = await this.getTransferTimestamp(transfer);
-            transactions.push({
-              hash: transfer.hash,
-              blockNumber: BigInt(transfer.blockNum),
-              timestamp,
-              from: transfer.from,
-              to: transfer.to || null,
-              value: BigInt(Math.floor((transfer.value || 0) * 1e18)),
-              gasUsed: BigInt(0),
-              gasPrice: BigInt(0),
-              status: 'success',
-              isContractInteraction: transfer.category !== 'external',
-            });
-          }
+          const timestamp = this.getTransferTimestamp(transfer);
+          
+          transactions.push({
+            hash: transfer.hash,
+            blockNumber: BigInt(transfer.blockNum),
+            timestamp,
+            from: transfer.from,
+            to: transfer.to || null,
+            value: BigInt(Math.floor((transfer.value || 0) * 1e18)),
+            gasUsed: BigInt(0), // Simplified - no receipt fetching for now
+            gasPrice: BigInt(0), // Simplified - no transaction fetching for now
+            status: 'success',
+            isContractInteraction: transfer.category !== 'external',
+          });
         }
       }
       
-      console.log(`Found ${transactions.length} transactions for address ${checksumAddress}`);
+      console.log(`✅ Found ${transactions.length} transactions for address ${checksumAddress}`);
+      console.log(`📊 Sent transfers: ${sentTxs.transfers.length}, Received transfers: ${receivedTxs.transfers.length}`);
       return transactions.sort((a, b) => b.timestamp - a.timestamp);
     } catch (error) {
-      console.error('Error fetching transaction history with Alchemy:', error);
+      console.error('❌ Error fetching transaction history with Alchemy:', error);
+      console.log('🔄 Falling back to basic RPC method...');
       // Fallback to basic method if Alchemy fails
       return this.fetchTransactionHistoryFallback(address);
     }
