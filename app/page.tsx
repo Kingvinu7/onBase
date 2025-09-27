@@ -114,6 +114,15 @@ export default function Home() {
                 <p>Unique interactions and contract usage</p>
               </div>
             </div>
+            
+            <div className={styles.testAddresses}>
+              <h3>Try these Base addresses:</h3>
+              <div className={styles.addressList}>
+                <code>0x4200000000000000000000000000000000000006</code> (WETH)
+                <code>0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22</code> (Active wallet)
+                <code>0x49048044D57e1C92A77f79988d21Fa8fAF74E97e</code> (Base Bridge)
+              </div>
+            </div>
           </div>
         )}
       </div>

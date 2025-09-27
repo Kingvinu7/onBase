@@ -67,16 +67,17 @@ export class AnalyticsService {
       const transactions: Transaction[] = [];
       
       // Fetch transfers (both sent and received)
+      // Note: Base network doesn't support 'internal' category
       const [sentTxs, receivedTxs] = await Promise.all([
         alchemy.core.getAssetTransfers({
           fromAddress: checksumAddress,
-          category: ['external', 'internal', 'erc20', 'erc721', 'erc1155'],
+          category: ['external', 'erc20', 'erc721', 'erc1155'],
           maxCount: 1000,
           order: 'desc'
         }),
         alchemy.core.getAssetTransfers({
           toAddress: checksumAddress,
-          category: ['external', 'internal', 'erc20', 'erc721', 'erc1155'],
+          category: ['external', 'erc20', 'erc721', 'erc1155'],
           maxCount: 1000,
           order: 'desc'
         })
@@ -85,21 +86,40 @@ export class AnalyticsService {
       // Process sent transactions
       for (const transfer of sentTxs.transfers) {
         if (transfer.hash) {
-          const receipt = await alchemy.core.getTransactionReceipt(transfer.hash);
-          const tx = await alchemy.core.getTransaction(transfer.hash);
-          
-          transactions.push({
-            hash: transfer.hash,
-            blockNumber: BigInt(transfer.blockNum),
-            timestamp: new Date(transfer.metadata.blockTimestamp).getTime() / 1000,
-            from: transfer.from,
-            to: transfer.to || null,
-            value: BigInt(Math.floor((transfer.value || 0) * 1e18)),
-            gasUsed: BigInt(receipt?.gasUsed?.toString() || '0'),
-            gasPrice: BigInt(tx?.gasPrice?.toString() || '0'),
-            status: receipt?.status === 1 ? 'success' : 'failed',
-            isContractInteraction: transfer.category !== 'external',
-          });
+          try {
+            const [receipt, tx] = await Promise.all([
+              alchemy.core.getTransactionReceipt(transfer.hash),
+              alchemy.core.getTransaction(transfer.hash)
+            ]);
+            
+            transactions.push({
+              hash: transfer.hash,
+              blockNumber: BigInt(transfer.blockNum),
+              timestamp: new Date(transfer.metadata.blockTimestamp).getTime() / 1000,
+              from: transfer.from,
+              to: transfer.to || null,
+              value: BigInt(Math.floor((transfer.value || 0) * 1e18)),
+              gasUsed: BigInt(receipt?.gasUsed?.toString() || '0'),
+              gasPrice: BigInt(tx?.gasPrice?.toString() || '0'),
+              status: receipt?.status === 1 ? 'success' : 'failed',
+              isContractInteraction: transfer.category !== 'external',
+            });
+          } catch (error) {
+            console.warn(`Failed to get details for transaction ${transfer.hash}:`, error);
+            // Add transaction with basic info even if receipt/tx fetch fails
+            transactions.push({
+              hash: transfer.hash,
+              blockNumber: BigInt(transfer.blockNum),
+              timestamp: new Date(transfer.metadata.blockTimestamp).getTime() / 1000,
+              from: transfer.from,
+              to: transfer.to || null,
+              value: BigInt(Math.floor((transfer.value || 0) * 1e18)),
+              gasUsed: BigInt(0),
+              gasPrice: BigInt(0),
+              status: 'success',
+              isContractInteraction: transfer.category !== 'external',
+            });
+          }
         }
       }
 
@@ -107,24 +127,44 @@ export class AnalyticsService {
       const existingHashes = new Set(transactions.map(tx => tx.hash));
       for (const transfer of receivedTxs.transfers) {
         if (transfer.hash && !existingHashes.has(transfer.hash)) {
-          const receipt = await alchemy.core.getTransactionReceipt(transfer.hash);
-          const tx = await alchemy.core.getTransaction(transfer.hash);
-          
-          transactions.push({
-            hash: transfer.hash,
-            blockNumber: BigInt(transfer.blockNum),
-            timestamp: new Date(transfer.metadata.blockTimestamp).getTime() / 1000,
-            from: transfer.from,
-            to: transfer.to || null,
-            value: BigInt(Math.floor((transfer.value || 0) * 1e18)),
-            gasUsed: BigInt(receipt?.gasUsed?.toString() || '0'),
-            gasPrice: BigInt(tx?.gasPrice?.toString() || '0'),
-            status: receipt?.status === 1 ? 'success' : 'failed',
-            isContractInteraction: transfer.category !== 'external',
-          });
+          try {
+            const [receipt, tx] = await Promise.all([
+              alchemy.core.getTransactionReceipt(transfer.hash),
+              alchemy.core.getTransaction(transfer.hash)
+            ]);
+            
+            transactions.push({
+              hash: transfer.hash,
+              blockNumber: BigInt(transfer.blockNum),
+              timestamp: new Date(transfer.metadata.blockTimestamp).getTime() / 1000,
+              from: transfer.from,
+              to: transfer.to || null,
+              value: BigInt(Math.floor((transfer.value || 0) * 1e18)),
+              gasUsed: BigInt(receipt?.gasUsed?.toString() || '0'),
+              gasPrice: BigInt(tx?.gasPrice?.toString() || '0'),
+              status: receipt?.status === 1 ? 'success' : 'failed',
+              isContractInteraction: transfer.category !== 'external',
+            });
+          } catch (error) {
+            console.warn(`Failed to get details for transaction ${transfer.hash}:`, error);
+            // Add transaction with basic info even if receipt/tx fetch fails
+            transactions.push({
+              hash: transfer.hash,
+              blockNumber: BigInt(transfer.blockNum),
+              timestamp: new Date(transfer.metadata.blockTimestamp).getTime() / 1000,
+              from: transfer.from,
+              to: transfer.to || null,
+              value: BigInt(Math.floor((transfer.value || 0) * 1e18)),
+              gasUsed: BigInt(0),
+              gasPrice: BigInt(0),
+              status: 'success',
+              isContractInteraction: transfer.category !== 'external',
+            });
+          }
         }
       }
       
+      console.log(`Found ${transactions.length} transactions for address ${checksumAddress}`);
       return transactions.sort((a, b) => b.timestamp - a.timestamp);
     } catch (error) {
       console.error('Error fetching transaction history with Alchemy:', error);

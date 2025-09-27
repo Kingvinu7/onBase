@@ -183,3 +183,36 @@
     margin-top: 2rem;
   }
 }
+
+.testAddresses {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.testAddresses h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--foreground);
+}
+
+.addressList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.addressList code {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-family: var(--font-source-code-pro), monospace;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.addressList code:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
