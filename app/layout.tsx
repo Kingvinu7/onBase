@@ -9,6 +9,9 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: minikitConfig.miniapp.name,
     description: minikitConfig.miniapp.description,
+    manifest: '/manifest.json',
+    viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
+    themeColor: '#3b82f6',
     other: {
       "fc:miniapp": JSON.stringify({
         version: minikitConfig.miniapp.version,

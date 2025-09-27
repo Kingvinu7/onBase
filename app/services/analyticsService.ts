@@ -121,6 +121,25 @@ export class AnalyticsService {
           console.log(`📊 Processing ${data.result.length} transactions from page ${page}...`);
           
           for (const tx of data.result) {
+            // Enhanced contract interaction detection
+            const hasInput = tx.input && tx.input !== '0x';
+            const isContractCreation = tx.to === null || tx.to === '';
+            const highGasUsage = parseInt(tx.gasUsed) > 21000; // Simple transfers use exactly 21000 gas
+            const isContract = hasInput || isContractCreation || highGasUsage;
+            
+            // Debug contract detection for first few transactions
+            if (allTransactions.length < 3) {
+              console.log(`🔍 Contract detection for tx ${tx.hash.slice(0, 10)}:`, {
+                hasInput,
+                isContractCreation,
+                highGasUsage,
+                gasUsed: tx.gasUsed,
+                input: tx.input?.slice(0, 20) + '...',
+                to: tx.to?.slice(0, 10),
+                isContract
+              });
+            }
+            
             allTransactions.push({
               hash: tx.hash,
               blockNumber: BigInt(tx.blockNumber),
@@ -131,7 +150,7 @@ export class AnalyticsService {
               gasUsed: BigInt(tx.gasUsed),
               gasPrice: BigInt(tx.gasPrice),
               status: tx.txreceipt_status === '1' ? 'success' : 'failed',
-              isContractInteraction: tx.input !== '0x',
+              isContractInteraction: isContract,
             });
           }
           
@@ -421,6 +440,18 @@ export class AnalyticsService {
         totalValue += tx.value;
         totalGasSpent += tx.gasUsed * tx.gasPrice;
         if (tx.isContractInteraction) contractInteractions++;
+      });
+
+      console.log('📊 Metrics calculation:', {
+        totalTx: transactions.length,
+        uniqueAddresses: uniqueAddresses.size,
+        contractInteractions,
+        sampleTx: transactions.slice(0, 3).map(tx => ({
+          hash: tx.hash.slice(0, 10),
+          isContract: tx.isContractInteraction,
+          to: tx.to?.slice(0, 10),
+          hasInput: 'input data available'
+        }))
       });
 
       const firstTx = transactions[transactions.length - 1];
