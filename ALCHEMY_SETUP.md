@@ -1,5 +1,7 @@
 # 🔗 Alchemy Setup Guide for Base Analytics
 
+> **Updated**: Complete step-by-step guide for setting up Alchemy with Base network
+
 ## 📋 **Step-by-Step Alchemy Setup**
 
 ### **1. Create Alchemy Account & App**
