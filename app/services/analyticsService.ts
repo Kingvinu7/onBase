@@ -11,7 +11,10 @@ import type {
 
 // Basescan API configuration
 const BASESCAN_API_URL = 'https://api.basescan.org/api';
-const BASESCAN_API_KEY = process.env.NEXT_PUBLIC_BASESCAN_API_KEY || 'YourApiKeyToken';
+// Support both Basescan and Etherscan API keys (Etherscan now supports Base)
+const API_KEY = process.env.NEXT_PUBLIC_BASESCAN_API_KEY || 
+                process.env.NEXT_PUBLIC_ETHERSCAN_API_KEY || 
+                'YourApiKeyToken';
 
 // Create a public client for Base network
 const publicClient = createPublicClient({
@@ -40,14 +43,23 @@ export class AnalyticsService {
    * Fetches transaction history using Basescan API
    */
   private async fetchTransactionHistory(address: string): Promise<Transaction[]> {
+    // Check if we have a valid API key
+    if (API_KEY === 'YourApiKeyToken') {
+      console.warn('⚠️ No API key found, using basic RPC method...');
+      console.log('💡 To get real data, add NEXT_PUBLIC_ETHERSCAN_API_KEY to your .env.local file');
+      return await this.fetchBasicTransactions(address);
+    }
+
     try {
       const checksumAddress = getAddress(address);
       console.log(`🔍 Fetching transaction history from Basescan for: ${checksumAddress}`);
+      console.log('🔑 Using API key:', API_KEY.substring(0, 8) + '...');
       
       // Start with just normal transactions to test
-      const normalTxUrl = `${BASESCAN_API_URL}?module=account&action=txlist&address=${checksumAddress}&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=${BASESCAN_API_KEY}`;
+      const normalTxUrl = `${BASESCAN_API_URL}?module=account&action=txlist&address=${checksumAddress}&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=${API_KEY}`;
       
       console.log('📡 Calling Basescan API...');
+      console.log('🔗 URL:', normalTxUrl.replace(API_KEY, 'API_KEY_HIDDEN'));
       const response = await fetch(normalTxUrl);
       
       if (!response.ok) {
@@ -392,7 +404,9 @@ export class AnalyticsService {
       console.log(`🔍 Fetching from Basescan for: ${checksumAddress}`);
       
       // Fetch normal transactions first
-      const normalTxUrl = `${BASESCAN_API_URL}?module=account&action=txlist&address=${checksumAddress}&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=${BASESCAN_API_KEY}`;
+      const normalTxUrl = `${BASESCAN_API_URL}?module=account&action=txlist&address=${checksumAddress}&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=${API_KEY}`;
+      
+      console.log('🔑 Using API key:', API_KEY.substring(0, 8) + '...');
       
       console.log('📡 Calling Basescan...');
       const response = await fetch(normalTxUrl);
@@ -426,11 +440,17 @@ export class AnalyticsService {
             isContractInteraction: tx.input !== '0x',
           });
         }
-      } else if (data.status === '0' && data.message === 'No transactions found') {
-        console.log('✅ No transactions found (valid result)');
-        return [];
+      } else if (data.status === '0') {
+        if (data.message === 'No transactions found') {
+          console.log('✅ No transactions found (valid result)');
+          return [];
+        } else if (data.message === 'NOTOK') {
+          throw new Error('❌ API Key Error: Invalid or missing API key. Please check your NEXT_PUBLIC_ETHERSCAN_API_KEY or NEXT_PUBLIC_BASESCAN_API_KEY in .env.local');
+        } else {
+          throw new Error(`Basescan API error: ${data.message || 'Unknown error'}`);
+        }
       } else {
-        throw new Error(`Basescan error: ${data.message || 'Unknown error'}`);
+        throw new Error(`Unexpected Basescan response: ${JSON.stringify(data)}`);
       }
 
       console.log(`✅ Successfully processed ${transactions.length} transactions`);
