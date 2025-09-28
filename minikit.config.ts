@@ -22,7 +22,7 @@ export const minikitConfig = {
     name: "onBase",
     subtitle: "Your Base Analytics Companion",
     description: "Explore your onchain journey on Base! Discover transaction patterns, activity streaks, and unlock your unique blockchain personality with comprehensive address analytics.",
-    screenshotUrls: [],
+    screenshotUrls: [`${ROOT_URL}/screenshot.png`],
     iconUrl: `${ROOT_URL}/icon.png`,
     splashImageUrl: `${ROOT_URL}/splash.png`,
     splashBackgroundColor: "#000000",

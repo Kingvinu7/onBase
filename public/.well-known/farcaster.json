@@ -1,0 +1,23 @@
+{
+  "accountAssociation": {
+    "header": "eyJmaWQiOjI1MDg2OSwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweDQwZUY3Qzc1YjRlRDBkQjY3N0MzN2VjODkxODM0QjI1MDk1ODI1ZDYifQ",
+    "payload": "eyJkb21haW4iOiJvbmJhc2Utc2l4LnZlcmNlbC5hcHAifQ",
+    "signature": "MHgwZjU3ZmVjNzljM2VmMTU1NmY4ZGY0MjBmNjIyN2RiMWIzOTRhNzIzOTlkODUyMTdmYjVkYjA1OGU2YjA1OTU4MWM0ZGY1ZjgzZTYyMDNiNTVhYWQ4MTQ4YjY3NTdhY2JiMjRlOGUxMGJlZGM0MGY4NDJjZGIzNjg3NTIxZWQ0YTFi"
+  },
+  "miniapp": {
+    "version": "1",
+    "name": "onBase",
+    "subtitle": "Your Base Analytics Companion",
+    "description": "Explore your onchain journey on Base! Discover transaction patterns, activity streaks, and unlock your unique blockchain personality.",
+    "iconUrl": "https://onbase-six.vercel.app/icon.png",
+    "splashImageUrl": "https://onbase-six.vercel.app/splash.png",
+    "splashBackgroundColor": "#0a0a0a",
+    "homeUrl": "https://onbase-six.vercel.app",
+    "primaryCategory": "utility",
+    "tags": ["analytics", "base", "onchain", "wallet", "defi", "explorer"],
+    "heroImageUrl": "https://onbase-six.vercel.app/hero.png",
+    "screenshotUrls": [
+      "https://onbase-six.vercel.app/screenshot.png"
+    ]
+  }
+}
