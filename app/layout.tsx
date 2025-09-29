@@ -32,26 +32,6 @@ export async function generateMetadata(): Promise<Metadata> {
       site: '@onbase_app',
     },
     other: {
-      // Farcaster Frame metadata
-      "fc:frame": "vNext",
-      "fc:frame:version": "vNext",
-      "fc:frame:image": "https://onbase-six.vercel.app/onBase-hero.png",
-      "fc:frame:image:aspect_ratio": "1.91:1",
-      "fc:frame:image:width": "1200",
-      "fc:frame:image:height": "630",
-      "fc:frame:image:alt": "onBase - Your Journey",
-      "fc:frame:button:1": "🚀 Launch onBase",
-      "fc:frame:button:1:action": "link",
-      "fc:frame:button:1:target": "https://onbase-six.vercel.app",
-      "fc:frame:button:1:post_url": "https://onbase-six.vercel.app",
-      "fc:frame:button:2": "📊 View Analytics",
-      "fc:frame:button:2:action": "link",
-      "fc:frame:button:2:target": "https://onbase-six.vercel.app",
-      "fc:frame:post_url": "https://onbase-six.vercel.app",
-      "fc:frame:state": "initial",
-      "fc:frame:input:text": "Enter Base address to analyze",
-      "fc:frame:input:placeholder": "0x...",
-      
       // Farcaster Frame metadata (for embed validation)
       "fc:frame": JSON.stringify({
         version: "1",
