@@ -43,12 +43,23 @@ export async function generateMetadata(): Promise<Metadata> {
     other: {
       // Farcaster Frame metadata
       "fc:frame": "vNext",
+      "fc:frame:version": "vNext",
       "fc:frame:image": "https://onbase-six.vercel.app/onBase-hero.png",
       "fc:frame:image:aspect_ratio": "1.91:1",
+      "fc:frame:image:width": "1200",
+      "fc:frame:image:height": "630",
+      "fc:frame:image:alt": "onBase - Your Journey",
       "fc:frame:button:1": "🚀 Launch onBase",
       "fc:frame:button:1:action": "link",
       "fc:frame:button:1:target": "https://onbase-six.vercel.app",
+      "fc:frame:button:1:post_url": "https://onbase-six.vercel.app",
+      "fc:frame:button:2": "📊 View Analytics",
+      "fc:frame:button:2:action": "link",
+      "fc:frame:button:2:target": "https://onbase-six.vercel.app",
       "fc:frame:post_url": "https://onbase-six.vercel.app",
+      "fc:frame:state": "initial",
+      "fc:frame:input:text": "Enter Base address to analyze",
+      "fc:frame:input:placeholder": "0x...",
       
       // Farcaster Miniapp metadata
       "fc:miniapp": JSON.stringify({
@@ -76,9 +87,23 @@ export async function generateMetadata(): Promise<Metadata> {
       "referrer": "origin-when-cross-origin",
       "format-detection": "telephone=no",
       
+      // Frame validation metadata
+      "fc:frame:debug": "false",
+      "fc:frame:cache": "false",
+      "fc:frame:refresh": "false",
+      "fc:frame:refresh:period": "0",
+      "fc:frame:refresh:url": "https://onbase-six.vercel.app",
+      "fc:frame:refresh:method": "GET",
+      
       // Additional Farcaster metadata
-      "fc:frame:version": "vNext",
-      "fc:frame:state": "initial",
+      "fc:frame:accepts:cast_action": "true",
+      "fc:frame:accepts:tx": "true",
+      "fc:frame:accepts:tx:version": "v1",
+      "fc:frame:accepts:tx:network": "base",
+      "fc:frame:accepts:tx:action": "mint",
+      "fc:frame:accepts:tx:target": "https://onbase-six.vercel.app",
+      "fc:frame:accepts:tx:post_url": "https://onbase-six.vercel.app",
+      "fc:frame:accepts:tx:post_url:method": "POST",
       
       // LinkedIn metadata
       "linkedin:owner": "onbase-app",
