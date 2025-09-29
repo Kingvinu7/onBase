@@ -34,32 +34,29 @@ export async function generateMetadata(): Promise<Metadata> {
       "fc:frame:button:1:target": minikitConfig.miniapp.homeUrl,
       
       // Farcaster Miniapp metadata
-      "fc:miniapp": JSON.stringify({
-        version: minikitConfig.miniapp.version,
-        name: minikitConfig.miniapp.name,
-        subtitle: minikitConfig.miniapp.subtitle,
-        description: minikitConfig.miniapp.description,
-        iconUrl: minikitConfig.miniapp.iconUrl,
-        splashImageUrl: minikitConfig.miniapp.splashImageUrl,
-        splashBackgroundColor: minikitConfig.miniapp.splashBackgroundColor,
-        homeUrl: minikitConfig.miniapp.homeUrl,
-        imageUrl: minikitConfig.miniapp.heroImageUrl,
-
-        primaryCategory: minikitConfig.miniapp.primaryCategory,
-        tags: minikitConfig.miniapp.tags,
-        button: {
-          title: `🔍 Discover Your Base Story`,
-          action: {
-            name: `Launch ${minikitConfig.miniapp.name}`,
-            type: "launch_miniapp",
-          },
-        },
-      }),
+      "fc:miniapp": minikitConfig.miniapp.version,
+      "fc:miniapp:name": minikitConfig.miniapp.name,
+      "fc:miniapp:subtitle": minikitConfig.miniapp.subtitle,
+      "fc:miniapp:description": minikitConfig.miniapp.description,
+      "fc:miniapp:icon": minikitConfig.miniapp.iconUrl,
+      "fc:miniapp:splash": minikitConfig.miniapp.splashImageUrl,
+      "fc:miniapp:splash:background": minikitConfig.miniapp.splashBackgroundColor,
+      "fc:miniapp:url": minikitConfig.miniapp.homeUrl,
+      "fc:miniapp:image": minikitConfig.miniapp.heroImageUrl,
+      "fc:miniapp:category": minikitConfig.miniapp.primaryCategory,
+      "fc:miniapp:tags": minikitConfig.miniapp.tags.join(","),
+      "fc:miniapp:button": `🔍 Discover Your Base Story`,
+      "fc:miniapp:button:action": "launch_miniapp",
       
       // Additional Farcaster metadata
       "farcaster:miniapp:url": minikitConfig.miniapp.homeUrl,
       "farcaster:miniapp:name": minikitConfig.miniapp.name,
       "farcaster:miniapp:icon": minikitConfig.miniapp.iconUrl,
+      
+      // Additional required metadata for embed validation
+      "robots": "index, follow",
+      "referrer": "origin-when-cross-origin",
+      "format-detection": "telephone=no",
     },
   };
 }

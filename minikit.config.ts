@@ -10,7 +10,7 @@ export const minikitConfig = {
     iconUrl: "/onBase-icon.png",
     splashImageUrl: "/onBase-splash.png",
     splashBackgroundColor: "#0a0a0a",
-    homeUrl: "https://onbase.vercel.app",
+    homeUrl: "https://onbase-six.vercel.app",
     heroImageUrl: "/onBase-hero.png",
     imageUrl: "/onBase-hero.png",
     primaryCategory: "utilities",
