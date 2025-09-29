@@ -9,15 +9,15 @@
     "name": "onBase",
     "subtitle": "Base Analytics",
     "description": "Explore your Base blockchain journey! Discover transaction patterns and unlock your unique onchain personality.",
-    "iconUrl": "https://onbase-six.vercel.app/icon.png",
-    "splashImageUrl": "https://onbase-six.vercel.app/splash.png",
+    "iconUrl": "/onBase-icon.png",
+    "splashImageUrl": "/onBase-splash.png",
     "splashBackgroundColor": "#0a0a0a",
-    "homeUrl": "https://onbase-six.vercel.app",
+    "homeUrl": "https://onbase.vercel.app",
     "primaryCategory": "utility",
     "tags": ["analytics", "base", "onchain", "wallet", "defi"],
-    "heroImageUrl": "https://onbase-six.vercel.app/hero.png",
+    "heroImageUrl": "/onBase-hero.png",
     "screenshotUrls": [
-      "https://onbase-six.vercel.app/screenshot.png"
+      "/onBase-hero.png"
     ]
   }
 }
