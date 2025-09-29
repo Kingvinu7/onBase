@@ -15,15 +15,6 @@ export async function generateMetadata(): Promise<Metadata> {
     authors: [{ name: 'onBase Team' }],
     creator: 'onBase',
     publisher: 'onBase',
-    category: 'Technology',
-    classification: 'Business',
-    rating: 'General',
-    distribution: 'global',
-    language: 'en',
-    geo: {
-      region: 'US',
-      placename: 'United States'
-    },
     openGraph: {
       title: "onBase - Your Journey",
       description: "Explore your Base blockchain journey! Discover transaction patterns and unlock your unique onchain personality.",
