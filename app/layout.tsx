@@ -37,7 +37,7 @@ export async function generateMetadata(): Promise<Metadata> {
         version: "1",
         imageUrl: "https://onbase-six.vercel.app/onBase-hero.png",
         button: {
-          title: "Open App",
+          title: "🔍 Search",
           action: {
             type: "launch_frame",
             name: "onBase",
