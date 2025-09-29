@@ -4,7 +4,7 @@
     "payload": "eyJkb21haW4iOiJvbmJhc2Utc2l4LnZlcmNlbC5hcHAifQ",
     "signature": "MHgwZjU3ZmVjNzljM2VmMTU1NmY4ZGY0MjBmNjIyN2RiMWIzOTRhNzIzOTlkODUyMTdmYjVkYjA1OGU2YjA1OTU4MWM0ZGY1ZjgzZTYyMDNiNTVhYWQ4MTQ4YjY3NTdhY2JiMjRlOGUxMGJlZGM0MGY4NDJjZGIzNjg3NTIxZWQ0YTFi"
   },
-  "miniapp": {
+  "frame": {
     "version": "1",
     "name": "onBase",
     "subtitle": "Base Analytics",
