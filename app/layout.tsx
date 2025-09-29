@@ -66,11 +66,11 @@ export async function generateMetadata(): Promise<Metadata> {
         version: "1",
         imageUrl: "https://onbase-six.vercel.app/onBase-hero.png",
         button: {
-          title: "Open App",
+          title: "Analyze Now",
           action: {
-            type: "launch_frame",
-            name: "onBase",
+            type: "launch_miniapp",
             url: "https://onbase-six.vercel.app",
+            name: "onBase",
             splashImageUrl: "https://onbase-six.vercel.app/onBase-splash.png",
             splashBackgroundColor: "#0a0a0a"
           }

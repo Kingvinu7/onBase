@@ -68,9 +68,9 @@ export async function GET() {
         primaryCategory: "utilities",
         tags: ["analytics", "base", "blockchain", "defi", "tools"],
         button: {
-          title: "Open App",
+          title: "Analyze Now",
           action: {
-            type: "launch_frame",
+            type: "launch_miniapp",
             name: "onBase",
             url: "https://onbase-six.vercel.app",
             splashImageUrl: "https://onbase-six.vercel.app/onBase-splash.png",
