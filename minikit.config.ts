@@ -18,6 +18,6 @@ export const minikitConfig = {
     screenshotUrls: ["/onBase-hero.png"]
   },
   accountAssociation: {
-    type: "wallet"
+    type: "normal"
   }
 };
