@@ -38,13 +38,16 @@ export async function generateMetadata(): Promise<Metadata> {
       
       // Farcaster Miniapp metadata
       "fc:miniapp": JSON.stringify({
-        version: minikitConfig.miniapp.version,
+        version: "1",
         imageUrl: `https://onbase-six.vercel.app${minikitConfig.miniapp.heroImageUrl}`,
         button: {
-          title: `🔍 Discover Your Base Story`,
+          title: "Open App",
           action: {
-            type: "launch_miniapp",
-            url: minikitConfig.miniapp.homeUrl
+            type: "launch_frame",
+            name: minikitConfig.miniapp.name,
+            url: minikitConfig.miniapp.homeUrl,
+            splashImageUrl: `https://onbase-six.vercel.app${minikitConfig.miniapp.splashImageUrl}`,
+            splashBackgroundColor: minikitConfig.miniapp.splashBackgroundColor
           }
         }
       }),
