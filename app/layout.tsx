@@ -52,6 +52,20 @@ export async function generateMetadata(): Promise<Metadata> {
       "fc:frame:input:text": "Enter Base address to analyze",
       "fc:frame:input:placeholder": "0x...",
       
+      // Farcaster Frame metadata (for embed validation)
+      "fc:frame": JSON.stringify({
+        version: "1",
+        imageUrl: "https://onbase-six.vercel.app/onBase-hero.png",
+        button: {
+          title: "Open App",
+          action: {
+            type: "launch_frame",
+            name: "onBase",
+            url: "https://onbase-six.vercel.app"
+          }
+        }
+      }),
+      
       // Farcaster Miniapp metadata
       "fc:miniapp": JSON.stringify({
         version: "1",
