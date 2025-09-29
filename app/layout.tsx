@@ -22,7 +22,7 @@ export async function generateMetadata(): Promise<Metadata> {
       card: 'summary_large_image',
       title: minikitConfig.miniapp.ogTitle,
       description: minikitConfig.miniapp.ogDescription,
-      images: [minikitConfig.miniapp.ogImageUrl],
+      images: [minikitConfig.miniapp.ImageUrl],
     },
     other: {
       // Farcaster Frame metadata
@@ -44,7 +44,7 @@ export async function generateMetadata(): Promise<Metadata> {
         splashBackgroundColor: minikitConfig.miniapp.splashBackgroundColor,
         homeUrl: minikitConfig.miniapp.homeUrl,
         imageUrl: minikitConfig.miniapp.heroImageUrl,
-        ogImageUrl: "/onBase-hero.png",
+
         primaryCategory: minikitConfig.miniapp.primaryCategory,
         tags: minikitConfig.miniapp.tags,
         button: {
