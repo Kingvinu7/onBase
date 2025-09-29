@@ -17,6 +17,8 @@ export async function generateMetadata(): Promise<Metadata> {
       description: minikitConfig.miniapp.ogDescription,
       images: [minikitConfig.miniapp.imageUrl],
       type: 'website',
+      url: minikitConfig.miniapp.homeUrl,
+      siteName: minikitConfig.miniapp.name,
     },
     twitter: {
       card: 'summary_large_image',
@@ -32,21 +34,20 @@ export async function generateMetadata(): Promise<Metadata> {
       "fc:frame:button:1": `🚀 Launch ${minikitConfig.miniapp.name}`,
       "fc:frame:button:1:action": "link",
       "fc:frame:button:1:target": minikitConfig.miniapp.homeUrl,
+      "fc:frame:post_url": minikitConfig.miniapp.homeUrl,
       
       // Farcaster Miniapp metadata
-      "fc:miniapp": minikitConfig.miniapp.version,
-      "fc:miniapp:name": minikitConfig.miniapp.name,
-      "fc:miniapp:subtitle": minikitConfig.miniapp.subtitle,
-      "fc:miniapp:description": minikitConfig.miniapp.description,
-      "fc:miniapp:icon": minikitConfig.miniapp.iconUrl,
-      "fc:miniapp:splash": minikitConfig.miniapp.splashImageUrl,
-      "fc:miniapp:splash:background": minikitConfig.miniapp.splashBackgroundColor,
-      "fc:miniapp:url": minikitConfig.miniapp.homeUrl,
-      "fc:miniapp:image": minikitConfig.miniapp.heroImageUrl,
-      "fc:miniapp:category": minikitConfig.miniapp.primaryCategory,
-      "fc:miniapp:tags": minikitConfig.miniapp.tags.join(","),
-      "fc:miniapp:button": `🔍 Discover Your Base Story`,
-      "fc:miniapp:button:action": "launch_miniapp",
+      "fc:miniapp": JSON.stringify({
+        version: minikitConfig.miniapp.version,
+        imageUrl: minikitConfig.miniapp.heroImageUrl,
+        button: {
+          title: `🔍 Discover Your Base Story`,
+          action: {
+            type: "launch_miniapp",
+            url: minikitConfig.miniapp.homeUrl
+          }
+        }
+      }),
       
       // Additional Farcaster metadata
       "farcaster:miniapp:url": minikitConfig.miniapp.homeUrl,
