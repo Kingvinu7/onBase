@@ -15,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       title: minikitConfig.miniapp.ogTitle,
       description: minikitConfig.miniapp.ogDescription,
-      images: [minikitConfig.miniapp.ogImageUrl],
+      images: [minikitConfig.miniapp.ImageUrl],
       type: 'website',
     },
     twitter: {
