@@ -44,6 +44,7 @@ export async function generateMetadata(): Promise<Metadata> {
         splashBackgroundColor: minikitConfig.miniapp.splashBackgroundColor,
         homeUrl: minikitConfig.miniapp.homeUrl,
         imageUrl: minikitConfig.miniapp.heroImageUrl,
+        ogImageUrl: "/onBase-hero.png",
         primaryCategory: minikitConfig.miniapp.primaryCategory,
         tags: minikitConfig.miniapp.tags,
         button: {
