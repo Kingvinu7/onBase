@@ -1,0 +1,114 @@
+import { NextResponse } from 'next/server';
+
+export async function GET() {
+  const embedData = {
+    title: "onBase - Base Analytics",
+    description: "Discover your onchain journey on Base! Explore transaction patterns, activity streaks, and unlock your unique blockchain personality.",
+    url: "https://onbase-six.vercel.app",
+    image: "https://onbase-six.vercel.app/onBase-hero.png",
+    icon: "https://onbase-six.vercel.app/onBase-icon.png",
+    splash: "https://onbase-six.vercel.app/onBase-splash.png",
+    splashBackgroundColor: "#0a0a0a",
+    version: "1.0.0",
+    category: "utilities",
+    tags: ["analytics", "base", "blockchain", "defi", "tools"],
+    openGraph: {
+      title: "onBase - Your Journey",
+      description: "Explore your Base blockchain journey! Discover transaction patterns and unlock your unique onchain personality.",
+      image: "https://onbase-six.vercel.app/onBase-hero.png",
+      url: "https://onbase-six.vercel.app",
+      type: "website",
+      site_name: "onBase"
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "onBase - Your Journey",
+      description: "Explore your Base blockchain journey! Discover transaction patterns and unlock your unique onchain personality.",
+      image: "https://onbase-six.vercel.app/onBase-hero.png",
+      creator: "@onbase_app",
+      site: "@onbase_app"
+    },
+    farcaster: {
+      frame: {
+        version: "vNext",
+        image: "https://onbase-six.vercel.app/onBase-hero.png",
+        imageAspectRatio: "1.91:1",
+        imageWidth: "1200",
+        imageHeight: "630",
+        imageAlt: "onBase - Your Journey",
+        buttons: [
+          {
+            label: "🚀 Launch onBase",
+            action: "link",
+            target: "https://onbase-six.vercel.app"
+          },
+          {
+            label: "📊 View Analytics",
+            action: "link",
+            target: "https://onbase-six.vercel.app"
+          }
+        ],
+        input: {
+          text: "Enter Base address to analyze",
+          placeholder: "0x..."
+        },
+        postUrl: "https://onbase-six.vercel.app",
+        state: "initial"
+      },
+      miniapp: {
+        version: "1",
+        name: "onBase",
+        subtitle: "Base Analytics",
+        description: "Discover your onchain journey on Base! Explore transaction patterns, activity streaks, and unlock your unique blockchain personality.",
+        iconUrl: "https://onbase-six.vercel.app/onBase-icon.png",
+        splashImageUrl: "https://onbase-six.vercel.app/onBase-splash.png",
+        splashBackgroundColor: "#0a0a0a",
+        homeUrl: "https://onbase-six.vercel.app",
+        heroImageUrl: "https://onbase-six.vercel.app/onBase-hero.png",
+        primaryCategory: "utilities",
+        tags: ["analytics", "base", "blockchain", "defi", "tools"],
+        button: {
+          title: "Open App",
+          action: {
+            type: "launch_frame",
+            name: "onBase",
+            url: "https://onbase-six.vercel.app",
+            splashImageUrl: "https://onbase-six.vercel.app/onBase-splash.png",
+            splashBackgroundColor: "#0a0a0a"
+          }
+        }
+      }
+    },
+    schema: {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "onBase",
+      "description": "Discover your onchain journey on Base! Explore transaction patterns, activity streaks, and unlock your unique blockchain personality.",
+      "url": "https://onbase-six.vercel.app",
+      "image": "https://onbase-six.vercel.app/onBase-hero.png",
+      "icon": "https://onbase-six.vercel.app/onBase-icon.png",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web Browser",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "onBase",
+        "url": "https://onbase-six.vercel.app"
+      }
+    }
+  };
+
+  return NextResponse.json(embedData, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'public, max-age=3600',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
+}
