@@ -15,14 +15,14 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       title: minikitConfig.miniapp.ogTitle,
       description: minikitConfig.miniapp.ogDescription,
-      images: [minikitConfig.miniapp.ImageUrl],
+      images: [minikitConfig.miniapp.imageUrl],
       type: 'website',
     },
     twitter: {
       card: 'summary_large_image',
       title: minikitConfig.miniapp.ogTitle,
       description: minikitConfig.miniapp.ogDescription,
-      images: [minikitConfig.miniapp.ImageUrl],
+      images: [minikitConfig.miniapp.imageUrl],
     },
     other: {
       // Farcaster Frame metadata
