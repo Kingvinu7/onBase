@@ -29,7 +29,7 @@ export async function generateMetadata(): Promise<Metadata> {
     other: {
       // Farcaster Frame metadata
       "fc:frame": "vNext",
-      "fc:frame:image": minikitConfig.miniapp.heroImageUrl,
+      "fc:frame:image": `https://onbase-six.vercel.app${minikitConfig.miniapp.heroImageUrl}`,
       "fc:frame:image:aspect_ratio": "1.91:1",
       "fc:frame:button:1": `🚀 Launch ${minikitConfig.miniapp.name}`,
       "fc:frame:button:1:action": "link",
@@ -39,7 +39,7 @@ export async function generateMetadata(): Promise<Metadata> {
       // Farcaster Miniapp metadata
       "fc:miniapp": JSON.stringify({
         version: minikitConfig.miniapp.version,
-        imageUrl: minikitConfig.miniapp.heroImageUrl,
+        imageUrl: `https://onbase-six.vercel.app${minikitConfig.miniapp.heroImageUrl}`,
         button: {
           title: `🔍 Discover Your Base Story`,
           action: {
@@ -52,12 +52,16 @@ export async function generateMetadata(): Promise<Metadata> {
       // Additional Farcaster metadata
       "farcaster:miniapp:url": minikitConfig.miniapp.homeUrl,
       "farcaster:miniapp:name": minikitConfig.miniapp.name,
-      "farcaster:miniapp:icon": minikitConfig.miniapp.iconUrl,
+      "farcaster:miniapp:icon": `https://onbase-six.vercel.app${minikitConfig.miniapp.iconUrl}`,
       
       // Additional required metadata for embed validation
       "robots": "index, follow",
       "referrer": "origin-when-cross-origin",
       "format-detection": "telephone=no",
+      
+      // Additional Farcaster metadata
+      "fc:frame:version": "vNext",
+      "fc:frame:state": "initial",
     },
   };
 }
