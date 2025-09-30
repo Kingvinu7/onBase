@@ -15,8 +15,8 @@ interface ShareButtonProps {
 export function ShareButton({ analytics }: ShareButtonProps) {
   const [isSharing, setIsSharing] = useState(false);
 
-  const formatAddress = (address: string) => {
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  const formatAddress = (_address: string) => {
+    return `${_address.slice(0, 6)}...${_address.slice(-4)}`;
   };
 
   const generateCastText = () => {

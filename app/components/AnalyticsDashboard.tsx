@@ -236,7 +236,7 @@ export function AnalyticsDashboard({ analytics, loading = false }: AnalyticsDash
         <h2 className={styles.sectionTitle}>Share Your Analytics</h2>
         <div className={styles.shareSection}>
           <p className={styles.shareDescription}>
-            Share your Base analytics with the community and discover others' onchain journeys!
+            Share your Base analytics with the community and discover others&apos; onchain journeys!
           </p>
           <ShareButton analytics={analytics} />
         </div>
