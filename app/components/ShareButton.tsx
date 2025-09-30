@@ -15,12 +15,7 @@ interface ShareButtonProps {
 export function ShareButton({ analytics }: ShareButtonProps) {
   const [isSharing, setIsSharing] = useState(false);
 
-  const formatAddress = (_address: string) => {
-    return `${_address.slice(0, 6)}...${_address.slice(-4)}`;
-  };
-
   const generateCastText = () => {
-    const address = formatAddress(analytics.address);
     const castText = `🔍 Just analyzed my Base wallet with onBase!
 
 📊 ${analytics.totalTransactions} transactions
