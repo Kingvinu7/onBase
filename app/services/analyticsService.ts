@@ -435,8 +435,10 @@ export class AnalyticsService {
       let contractInteractions = 0;
       
       transactions.forEach(tx => {
-        if (tx.from === checksumAddress && tx.to) uniqueAddresses.add(tx.to);
-        if (tx.to === checksumAddress) uniqueAddresses.add(tx.from);
+        // Add both from and to addresses to unique interactions
+        if (tx.from && tx.from !== checksumAddress) uniqueAddresses.add(tx.from);
+        if (tx.to && tx.to !== checksumAddress) uniqueAddresses.add(tx.to);
+        
         totalValue += tx.value;
         totalGasSpent += tx.gasUsed * tx.gasPrice;
         if (tx.isContractInteraction) contractInteractions++;

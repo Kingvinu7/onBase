@@ -68,7 +68,7 @@
 .value {
   font-size: 32px;
   font-weight: 700;
-  color: var(--foreground);
+  color: #ffffff;
   line-height: 1;
   font-family: var(--font-source-code-pro), monospace;
 }

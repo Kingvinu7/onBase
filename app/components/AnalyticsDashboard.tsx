@@ -3,6 +3,7 @@
 import { AddressAnalytics } from '../types/analytics';
 import { AnalyticsService } from '../services/analyticsService';
 import { MetricCard } from './MetricCard';
+import { ShareButton } from './ShareButton';
 import styles from './AnalyticsDashboard.module.css';
 
 // Helper functions for address profiling
@@ -228,6 +229,16 @@ export function AnalyticsDashboard({ analytics, loading = false }: AnalyticsDash
             <h3 className={styles.profileName}>{getAddressName(analytics)}</h3>
             <p className={styles.profileDescription}>{getAddressDescription(analytics)}</p>
           </div>
+        </div>
+      </div>
+
+      <div className={styles.section}>
+        <h2 className={styles.sectionTitle}>Share Your Analytics</h2>
+        <div className={styles.shareSection}>
+          <p className={styles.shareDescription}>
+            Share your Base analytics with the community and discover others' onchain journeys!
+          </p>
+          <ShareButton analytics={analytics} />
         </div>
       </div>
     </div>

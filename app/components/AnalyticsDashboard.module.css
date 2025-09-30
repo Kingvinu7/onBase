@@ -49,7 +49,7 @@
   font-size: 24px;
   font-weight: 600;
   margin: 0 0 24px 0;
-  color: var(--foreground);
+  color: #ffffff;
 }
 
 
@@ -154,6 +154,63 @@
   
   .profileDescription {
     font-size: 0.875rem;
+  }
+}
+
+.shareSection {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 32px;
+  text-align: center;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.shareSection::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6, #3b82f6);
+}
+
+.shareSection:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+.shareDescription {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.5;
+  margin: 0 0 24px 0;
+}
+
+/* Responsive design for share section */
+@media (max-width: 768px) {
+  .shareSection {
+    padding: 24px;
+  }
+  
+  .shareDescription {
+    font-size: 0.875rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .shareSection {
+    padding: 20px;
+  }
+  
+  .shareDescription {
+    font-size: 0.8rem;
+    margin-bottom: 20px;
   }
 }
 
