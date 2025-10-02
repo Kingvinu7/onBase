@@ -23,7 +23,7 @@ export function ShareButton({ analytics }: ShareButtonProps) {
 📅 ${analytics.activeDays} active days  
 🤝 ${analytics.uniqueInteractedAddresses} unique interactions
 
-Discover your onchain journey at https://onbase-six.vercel.app
+Discover your onchain journey
 
 #Base #onchain #analytics #onBase`;
 
