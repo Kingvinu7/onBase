@@ -2,7 +2,7 @@
   display: grid;
   grid-template-rows: auto 1fr;
   min-height: 100vh;
-  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+  background: #0000ff;
 }
 
 .headerWrapper {
@@ -242,7 +242,7 @@
 /* Responsive design */
 @media (max-width: 768px) {
   .container {
-    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+    background: #0000ff;
   }
   
   .headerWrapper {

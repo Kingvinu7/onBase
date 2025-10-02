@@ -1,13 +1,13 @@
 @layer base {
   :root {
-    --background: #0a0a0a;
+    --background: #0000ff;
     --foreground: #ededed;
   }
 
   @media (prefers-color-scheme: light) {
     :root {
-      --background: #ffffff;
-      --foreground: #171717;
+      --background: #0000ff;
+      --foreground: #ffffff;
     }
   }
 

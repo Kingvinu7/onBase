@@ -9,7 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
     description: "Discover your onchain journey on Base! Explore transaction patterns, activity streaks, and unlock your unique blockchain personality.",
     manifest: '/manifest.json',
     viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
-    themeColor: '#3b82f6',
+    themeColor: '#0000ff',
     colorScheme: 'light dark',
     keywords: 'base blockchain, analytics, onchain, ethereum, defi, wallet analysis',
     authors: [{ name: 'onBase Team' }],
@@ -57,7 +57,7 @@ export async function generateMetadata(): Promise<Metadata> {
             url: "https://onbase-six.vercel.app",
             name: "onBase",
             splashImageUrl: "https://onbase-six.vercel.app/onBase-splash.png",
-            splashBackgroundColor: "#0a0a0a"
+            splashBackgroundColor: "#0000ff"
           }
         }
       }),
@@ -133,9 +133,9 @@ export async function generateMetadata(): Promise<Metadata> {
       "apple-mobile-web-app-capable": "yes",
       "apple-mobile-web-app-status-bar-style": "default",
       "mobile-web-app-capable": "yes",
-      "msapplication-TileColor": "#3b82f6",
+      "msapplication-TileColor": "#0000ff",
       "msapplication-TileImage": "https://onbase-six.vercel.app/onBase-icon.png",
-      "theme-color": "#3b82f6",
+      "theme-color": "#0000ff",
       
       // Additional Open Graph metadata
       "og:locale": "en_US",
