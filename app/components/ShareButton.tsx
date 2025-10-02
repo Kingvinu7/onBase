@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { sdk } from '@farcaster/miniapp-sdk';
 import styles from './ShareButton.module.css';
 
 interface ShareButtonProps {
@@ -35,26 +36,44 @@ Discover your onchain journey at https://onbase-six.vercel.app
     try {
       const castText = generateCastText();
       
-      // Try to use Web Share API first
-      if (navigator.share) {
-        await navigator.share({
-          title: 'My Base Analytics',
-          text: castText,
-          url: 'https://onbase-six.vercel.app'
-        });
+      // Use Farcaster miniapp SDK composeCast function
+      const result = await sdk.actions.composeCast({
+        text: castText,
+        embeds: ['https://onbase-six.vercel.app'],
+        channelKey: 'base' // Optional: post to Base channel
+      });
+
+      // Handle the result
+      if (result?.cast) {
+        console.log('Cast posted successfully!');
+        console.log('Cast Hash:', result.cast.hash);
+        if (result.cast.channelKey) {
+          console.log('Posted to channel:', result.cast.channelKey);
+        }
+        // You could show a success message here
+        alert('Cast posted successfully! 🎉');
       } else {
-        // Fallback to clipboard
-        await navigator.clipboard.writeText(castText);
-        alert('Cast text copied to clipboard! You can now paste it in Farcaster.');
+        console.log('User canceled the cast.');
+        // User canceled, no need to show error
       }
     } catch (error) {
-      console.error('Error sharing:', error);
-      // Final fallback - copy to clipboard
+      console.error('Error composing cast:', error);
+      
+      // Fallback to Web Share API if SDK fails
       try {
-        await navigator.clipboard.writeText(generateCastText());
-        alert('Cast text copied to clipboard! You can now paste it in Farcaster.');
-      } catch (clipboardError) {
-        console.error('Clipboard error:', clipboardError);
+        if (navigator.share) {
+          await navigator.share({
+            title: 'My Base Analytics',
+            text: generateCastText(),
+            url: 'https://onbase-six.vercel.app'
+          });
+        } else {
+          // Final fallback - copy to clipboard
+          await navigator.clipboard.writeText(generateCastText());
+          alert('Cast text copied to clipboard! You can now paste it in Farcaster.');
+        }
+      } catch (fallbackError) {
+        console.error('Fallback sharing error:', fallbackError);
         alert('Unable to share. Please try again.');
       }
     } finally {
