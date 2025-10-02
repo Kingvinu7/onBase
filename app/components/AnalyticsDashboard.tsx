@@ -179,9 +179,9 @@ export function AnalyticsDashboard({ analytics, loading = false }: AnalyticsDash
         />
 
         <MetricCard
-          title="Total Value Moved"
+          title="Transaction Volume"
           value={`${AnalyticsService.formatEth(analytics.totalValueTransferred)} ETH`}
-          subtitle="Lifetime transaction volume"
+          subtitle="Total value transferred"
           icon="💸"
         />
 
