@@ -23,8 +23,6 @@ export function ShareButton({ analytics }: ShareButtonProps) {
 📅 ${analytics.activeDays} active days  
 🤝 ${analytics.uniqueInteractedAddresses} unique interactions
 
-Discover your onchain journey at https://onbase-six.vercel.app
-
 #Base #onchain #analytics #onBase`;
 
     return castText;
@@ -36,11 +34,16 @@ Discover your onchain journey at https://onbase-six.vercel.app
     try {
       const castText = generateCastText();
       
+      // Check if SDK is available
+      if (!sdk || !sdk.actions || !sdk.actions.composeCast) {
+        throw new Error('Farcaster SDK not available');
+      }
+      
       // Use Farcaster miniapp SDK composeCast function
       const result = await sdk.actions.composeCast({
         text: castText,
-        embeds: ['https://onbase-six.vercel.app'],
-        channelKey: 'base' // Optional: post to Base channel
+        embeds: ['https://onbase-six.vercel.app']
+        // Removed channelKey to avoid potential errors
       });
 
       // Handle the result
@@ -50,7 +53,7 @@ Discover your onchain journey at https://onbase-six.vercel.app
         if (result.cast.channelKey) {
           console.log('Posted to channel:', result.cast.channelKey);
         }
-        // You could show a success message here
+        // Show success message
         alert('Cast posted successfully! 🎉');
       } else {
         console.log('User canceled the cast.');
