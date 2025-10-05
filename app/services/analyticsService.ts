@@ -8,11 +8,11 @@ import type {
   ActivityStreak,
   AnalyticsError 
 } from '../types/analytics';
+import { API_CONFIG } from '../constants/config';
+import { getApiConfig, logEnvironmentStatus } from '../utils/env';
 
-// Etherscan v2 API supports Base network with chainid=8453
-const ETHERSCAN_V2_API_URL = 'https://api.etherscan.io/v2/api';
-const BASE_CHAIN_ID = '8453';
-const API_KEY = process.env.NEXT_PUBLIC_ETHERSCAN_API_KEY || 'YourApiKeyToken';
+// Get API configuration
+const apiConfig = getApiConfig();
 
 // Create a public client for Base network
 const publicClient = createPublicClient({
@@ -45,15 +45,18 @@ export class AnalyticsService {
       const checksumAddress = getAddress(address);
       console.log('🧪 Testing Etherscan v2 API for Base...');
       
-      // Test balance endpoint with Base chain ID
-      let testUrl = `${ETHERSCAN_V2_API_URL}?chainid=${BASE_CHAIN_ID}&module=account&action=balance&address=${checksumAddress}&tag=latest`;
+      // Log environment status for debugging
+      logEnvironmentStatus();
       
-      if (API_KEY !== 'YourApiKeyToken') {
-        testUrl += `&apikey=${API_KEY}`;
-        console.log('🔑 Using Etherscan API key:', API_KEY.substring(0, 8) + '...');
+      // Test balance endpoint with Base chain ID
+      let testUrl = `${API_CONFIG.etherscan.baseUrl}?chainid=${API_CONFIG.etherscan.baseChainId}&module=account&action=balance&address=${checksumAddress}&tag=latest`;
+      
+      if (apiConfig.hasValidApiKey) {
+        testUrl += `&apikey=${apiConfig.etherscanApiKey}`;
+        console.log('🔑 Using Etherscan API key:', apiConfig.etherscanApiKey.substring(0, 8) + '...');
       }
       
-      console.log('🔗 Test URL:', testUrl.replace(API_KEY, 'KEY_HIDDEN'));
+      console.log('🔗 Test URL:', testUrl.replace(apiConfig.etherscanApiKey, 'KEY_HIDDEN'));
       
       const response = await fetch(testUrl);
       const data = await response.json();
@@ -70,8 +73,8 @@ export class AnalyticsService {
    * Main transaction history fetching method
    */
   private async fetchTransactionHistory(address: string): Promise<Transaction[]> {
-    // Check if we have an Etherscan API key
-    if (API_KEY !== 'YourApiKeyToken') {
+    // Check if we have a valid Etherscan API key
+    if (apiConfig.hasValidApiKey) {
       try {
         console.log('🎯 Using Etherscan v2 API for COMPLETE Base history...');
         return await this.fetchTransactionHistoryEtherscan(address);
@@ -80,7 +83,7 @@ export class AnalyticsService {
         return await this.fetchBasicTransactions(address);
       }
     } else {
-      console.log('🎯 No API key found, using RPC method...');
+      console.log('🎯 No valid API key found, using RPC method...');
       return await this.fetchBasicTransactions(address);
     }
   }
@@ -99,7 +102,7 @@ export class AnalyticsService {
       
       // Fetch multiple pages to get complete history
       while (true) {
-        const pageUrl = `${ETHERSCAN_V2_API_URL}?chainid=${BASE_CHAIN_ID}&module=account&action=txlist&address=${checksumAddress}&startblock=0&endblock=99999999&page=${page}&offset=${maxOffset}&sort=asc&apikey=${API_KEY}`;
+        const pageUrl = `${API_CONFIG.etherscan.baseUrl}?chainid=${API_CONFIG.etherscan.baseChainId}&module=account&action=txlist&address=${checksumAddress}&startblock=0&endblock=99999999&page=${page}&offset=${API_CONFIG.etherscan.maxOffset}&sort=asc&apikey=${apiConfig.etherscanApiKey}`;
         
         console.log(`📡 Fetching page ${page} from Etherscan v2...`);
         
@@ -155,7 +158,7 @@ export class AnalyticsService {
           }
           
           // If we got less than maxOffset, we've reached the end
-          if (data.result.length < maxOffset) {
+          if (data.result.length < API_CONFIG.etherscan.maxOffset) {
             console.log(`🏁 Reached end of transactions at page ${page}`);
             break;
           }
@@ -163,8 +166,8 @@ export class AnalyticsService {
           page++;
           
           // Safety limit to prevent infinite loops
-          if (page > 50) {
-            console.log(`⚠️ Reached page limit (50), stopping. Total so far: ${allTransactions.length}`);
+          if (page > API_CONFIG.etherscan.maxPages) {
+            console.log(`⚠️ Reached page limit (${API_CONFIG.etherscan.maxPages}), stopping. Total so far: ${allTransactions.length}`);
             break;
           }
           
@@ -214,7 +217,7 @@ export class AnalyticsService {
       console.log(`📊 Current block: ${currentBlock}, checking last 500 blocks...`);
       
       // Check recent blocks for transactions
-      for (let i = 0; i < 500; i++) {
+      for (let i = 0; i < API_CONFIG.rpc.maxBlocksToCheck; i++) {
         const blockNumber = currentBlock - BigInt(i);
         try {
           const block = await publicClient.getBlock({ 
@@ -250,7 +253,7 @@ export class AnalyticsService {
         }
         
         // Stop if we found enough
-        if (transactions.length >= 20) {
+        if (transactions.length >= API_CONFIG.rpc.minTransactionsToStop) {
           console.log(`🎯 Found ${transactions.length} transactions, stopping search`);
           break;
         }
