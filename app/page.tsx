@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { Wallet } from "@coinbase/onchainkit/wallet";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
 import { useAccount } from "wagmi";
@@ -8,8 +8,40 @@ import { AnalyticsDashboard } from "./components/AnalyticsDashboard";
 import { Footer } from "./components/Footer";
 import { AnalyticsService } from "./services/analyticsService";
 import { mockAnalyticsData } from "./utils/mockData";
+import { TEST_ADDRESSES } from "./constants/config";
 import type { AddressAnalytics, AnalyticsError } from "./types/analytics";
 import styles from "./page.module.css";
+
+// Memoized features component for better performance
+const FeaturesSection = React.memo(() => (
+  <div className={styles.features}>
+    <h2 className={styles.featuresTitle}>What you&apos;ll discover</h2>
+    <div className={styles.featureGrid}>
+      <div className={styles.feature}>
+        <div className={styles.featureIcon}>💰</div>
+        <h3>Balance & Volume</h3>
+        <p>Current ETH balance and total value transferred</p>
+      </div>
+      <div className={styles.feature}>
+        <div className={styles.featureIcon}>📈</div>
+        <h3>Activity Patterns</h3>
+        <p>Daily and monthly activity breakdown with trends</p>
+      </div>
+      <div className={styles.feature}>
+        <div className={styles.featureIcon}>🔥</div>
+        <h3>Streaks & Consistency</h3>
+        <p>Activity streaks and engagement patterns</p>
+      </div>
+      <div className={styles.feature}>
+        <div className={styles.featureIcon}>🤝</div>
+        <h3>Network Analysis</h3>
+        <p>Unique interactions and contract usage</p>
+      </div>
+    </div>
+  </div>
+));
+
+FeaturesSection.displayName = 'FeaturesSection';
 
 export default function Home() {
   const { setMiniAppReady, isMiniAppReady } = useMiniKit();
@@ -24,7 +56,7 @@ export default function Home() {
     }
   }, [setMiniAppReady, isMiniAppReady]);
 
-  const handleAnalyze = async (address: string) => {
+  const handleAnalyze = useCallback(async (address: string) => {
     setLoading(true);
     setError(null);
     setAnalytics(null);
@@ -44,9 +76,9 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleAnalyzeConnectedWallet = async () => {
+  const handleAnalyzeConnectedWallet = useCallback(async () => {
     if (!connectedAddress) {
       setError('Please connect your wallet first');
       return;
@@ -54,7 +86,7 @@ export default function Home() {
     
     console.log('🔗 Analyzing connected wallet:', connectedAddress);
     await handleAnalyze(connectedAddress);
-  };
+  }, [connectedAddress, handleAnalyze]);
 
   return (
     <div className={styles.container}>
@@ -101,7 +133,7 @@ export default function Home() {
             )}
             
             <button 
-              onClick={() => setAnalytics(mockAnalyticsData)}
+              onClick={useCallback(() => setAnalytics(mockAnalyticsData), [])}
               className={styles.demoButton}
               disabled={loading}
             >
@@ -133,40 +165,23 @@ export default function Home() {
         )}
 
         {!analytics && !loading && !error && (
-          <div className={styles.features}>
-            <h2 className={styles.featuresTitle}>What you&apos;ll discover</h2>
-            <div className={styles.featureGrid}>
-              <div className={styles.feature}>
-                <div className={styles.featureIcon}>💰</div>
-                <h3>Balance & Volume</h3>
-                <p>Current ETH balance and total value transferred</p>
-              </div>
-              <div className={styles.feature}>
-                <div className={styles.featureIcon}>📈</div>
-                <h3>Activity Patterns</h3>
-                <p>Daily and monthly activity breakdown with trends</p>
-              </div>
-              <div className={styles.feature}>
-                <div className={styles.featureIcon}>🔥</div>
-                <h3>Streaks & Consistency</h3>
-                <p>Activity streaks and engagement patterns</p>
-              </div>
-              <div className={styles.feature}>
-                <div className={styles.featureIcon}>🤝</div>
-                <h3>Network Analysis</h3>
-                <p>Unique interactions and contract usage</p>
-              </div>
-            </div>
+          <>
+            <FeaturesSection />
             
             <div className={styles.testAddresses}>
               <h3>Try these Base addresses:</h3>
               <div className={styles.addressList}>
-                <code>0x4200000000000000000000000000000000000006</code> (WETH)
-                <code>0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22</code> (Active wallet)
-                <code>0x49048044D57e1C92A77f79988d21Fa8fAF74E97e</code> (Base Bridge)
+                {TEST_ADDRESSES.map((address, index) => {
+                  const labels = ['WETH', 'Active wallet', 'Base Bridge'];
+                  return (
+                    <code key={address} onClick={() => handleAnalyze(address)} style={{ cursor: 'pointer' }}>
+                      {address} ({labels[index]})
+                    </code>
+                  );
+                })}
               </div>
             </div>
-          </div>
+          </>
         )}
       </div>
       
