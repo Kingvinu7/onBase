@@ -4,6 +4,7 @@ import { AddressAnalytics } from '../types/analytics';
 import { AnalyticsService } from '../services/analyticsService';
 import { MetricCard } from './MetricCard';
 import { ShareButton } from './ShareButton';
+import { ADDRESS_PROFILES, UI_CONFIG } from '../constants/config';
 import styles from './AnalyticsDashboard.module.css';
 
 // Helper functions for address profiling
@@ -14,31 +15,47 @@ function getAddressName(analytics: AddressAnalytics): string {
   const totalEth = Number(AnalyticsService.formatEth(totalValueTransferred));
 
   // High-volume trader
-  if (totalEth > 100 && avgDailyTxs > 10) return "🐋 Whale Trader";
+  if (totalEth > ADDRESS_PROFILES.whaleTrader.minEth && avgDailyTxs > ADDRESS_PROFILES.whaleTrader.minDailyTxs) {
+    return ADDRESS_PROFILES.whaleTrader.name;
+  }
   
   // DeFi power user
-  if (contractRatio > 0.8 && totalTransactions > 100) return "🚀 DeFi Power User";
+  if (contractRatio > ADDRESS_PROFILES.defiPowerUser.minContractRatio && totalTransactions > ADDRESS_PROFILES.defiPowerUser.minTransactions) {
+    return ADDRESS_PROFILES.defiPowerUser.name;
+  }
   
   // Bot or automated
-  if (avgDailyTxs > 20 && contractRatio > 0.9) return "🤖 Trading Bot";
+  if (avgDailyTxs > ADDRESS_PROFILES.tradingBot.minDailyTxs && contractRatio > ADDRESS_PROFILES.tradingBot.minContractRatio) {
+    return ADDRESS_PROFILES.tradingBot.name;
+  }
   
   // NFT collector
-  if (contractRatio > 0.6 && totalEth < 10) return "🎨 NFT Collector";
+  if (contractRatio > ADDRESS_PROFILES.nftCollector.minContractRatio && totalEth < ADDRESS_PROFILES.nftCollector.maxEth) {
+    return ADDRESS_PROFILES.nftCollector.name;
+  }
   
   // Active trader
-  if (totalTransactions > 200 && activeDays > 30) return "📈 Active Trader";
+  if (totalTransactions > ADDRESS_PROFILES.activeTrader.minTransactions && activeDays > ADDRESS_PROFILES.activeTrader.minActiveDays) {
+    return ADDRESS_PROFILES.activeTrader.name;
+  }
   
   // Contract deployer
-  if (contractRatio > 0.5 && totalTransactions < 50) return "⚙️ Contract Deployer";
+  if (contractRatio > ADDRESS_PROFILES.contractDeployer.minContractRatio && totalTransactions < ADDRESS_PROFILES.contractDeployer.maxTransactions) {
+    return ADDRESS_PROFILES.contractDeployer.name;
+  }
   
   // Regular user
-  if (totalTransactions > 50) return "👤 Regular User";
+  if (totalTransactions > ADDRESS_PROFILES.regularUser.minTransactions) {
+    return ADDRESS_PROFILES.regularUser.name;
+  }
   
   // New user
-  if (totalTransactions < 10) return "🌱 New User";
+  if (totalTransactions < ADDRESS_PROFILES.newUser.maxTransactions) {
+    return ADDRESS_PROFILES.newUser.name;
+  }
   
   // Default
-  return "📊 Base User";
+  return ADDRESS_PROFILES.default.name;
 }
 
 function getAddressIcon(analytics: AddressAnalytics): string {
@@ -46,12 +63,12 @@ function getAddressIcon(analytics: AddressAnalytics): string {
   const contractRatio = contractInteractions / Math.max(totalTransactions, 1);
   const totalEth = Number(AnalyticsService.formatEth(totalValueTransferred));
 
-  if (totalEth > 100) return "🐋";
-  if (contractRatio > 0.8) return "🚀";
-  if (contractRatio > 0.6) return "🎨";
-  if (totalTransactions > 200) return "📈";
-  if (totalTransactions < 10) return "🌱";
-  return "👤";
+  if (totalEth > ADDRESS_PROFILES.whaleTrader.minEth) return ADDRESS_PROFILES.whaleTrader.icon;
+  if (contractRatio > ADDRESS_PROFILES.defiPowerUser.minContractRatio) return ADDRESS_PROFILES.defiPowerUser.icon;
+  if (contractRatio > ADDRESS_PROFILES.nftCollector.minContractRatio) return ADDRESS_PROFILES.nftCollector.icon;
+  if (totalTransactions > ADDRESS_PROFILES.activeTrader.minTransactions) return ADDRESS_PROFILES.activeTrader.icon;
+  if (totalTransactions < ADDRESS_PROFILES.newUser.maxTransactions) return ADDRESS_PROFILES.newUser.icon;
+  return ADDRESS_PROFILES.default.icon;
 }
 
 function getAddressDescription(analytics: AddressAnalytics): string {
@@ -93,7 +110,7 @@ export function AnalyticsDashboard({ analytics, loading = false }: AnalyticsDash
         </div>
         
         <div className={styles.grid}>
-          {Array.from({ length: 8 }).map((_, i) => (
+          {Array.from({ length: UI_CONFIG.loading.skeletonCount }).map((_, i) => (
             <MetricCard
               key={i}
               title=""
@@ -107,7 +124,7 @@ export function AnalyticsDashboard({ analytics, loading = false }: AnalyticsDash
   }
 
   const formatAddress = (address: string) => {
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+    return `${address.slice(0, UI_CONFIG.address.displayLength)}...${address.slice(-4)}`;
   };
 
   const formatDate = (dateString: string | null) => {
@@ -123,17 +140,17 @@ export function AnalyticsDashboard({ analytics, loading = false }: AnalyticsDash
   };
 
   return (
-    <div className={styles.dashboard}>
+    <div className={styles.dashboard} role="main" aria-label="Address analytics dashboard">
       <div className={styles.header}>
-        <h1 className={styles.title}>
+        <h1 className={styles.title} id="analytics-title">
           Analytics for {formatAddress(analytics.address)}
         </h1>
-        <p className={styles.subtitle}>
+        <p className={styles.subtitle} aria-describedby="analytics-title">
           Last updated: {new Date(analytics.lastUpdated).toLocaleString()}
         </p>
       </div>
 
-      <div className={styles.grid}>
+      <div className={styles.grid} role="grid" aria-label="Analytics metrics">
         <MetricCard
           title="Total Transactions"
           value={AnalyticsService.formatNumber(analytics.totalTransactions)}
@@ -221,26 +238,26 @@ export function AnalyticsDashboard({ analytics, loading = false }: AnalyticsDash
         />
       </div>
 
-      <div className={styles.section}>
-        <h2 className={styles.sectionTitle}>Address Profile</h2>
-        <div className={styles.profileCard}>
-          <div className={styles.profileIcon}>{getAddressIcon(analytics)}</div>
+      <section className={styles.section} aria-labelledby="profile-title">
+        <h2 className={styles.sectionTitle} id="profile-title">Address Profile</h2>
+        <div className={styles.profileCard} role="complementary" aria-label="Address profile information">
+          <div className={styles.profileIcon} aria-hidden="true">{getAddressIcon(analytics)}</div>
           <div className={styles.profileInfo}>
             <h3 className={styles.profileName}>{getAddressName(analytics)}</h3>
             <p className={styles.profileDescription}>{getAddressDescription(analytics)}</p>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className={styles.section}>
-        <h2 className={styles.sectionTitle}>Share Your Analytics</h2>
+      <section className={styles.section} aria-labelledby="share-title">
+        <h2 className={styles.sectionTitle} id="share-title">Share Your Analytics</h2>
         <div className={styles.shareSection}>
           <p className={styles.shareDescription}>
             Share your Base analytics with the community and discover others&apos; onchain journeys!
           </p>
           <ShareButton analytics={analytics} />
         </div>
-      </div>
+      </section>
     </div>
   );
 }
