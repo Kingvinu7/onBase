@@ -192,7 +192,9 @@ export class AnalyticsService {
         const firstTx = sortedByTime[0];
         const lastTx = sortedByTime[sortedByTime.length - 1];
         
-        console.log(`📅 COMPLETE Transaction range: ${new Date(firstTx.timestamp * 1000).toLocaleDateString()} to ${new Date(lastTx.timestamp * 1000).toLocaleDateString()}`);
+        if (firstTx && lastTx) {
+          console.log(`📅 COMPLETE Transaction range: ${new Date(firstTx.timestamp * 1000).toLocaleDateString()} to ${new Date(lastTx.timestamp * 1000).toLocaleDateString()}`);
+        }
       }
 
       console.log(`✅ Etherscan v2 COMPLETE: Found ${allTransactions.length} total transactions across ${page} pages`);
