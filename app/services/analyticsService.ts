@@ -370,12 +370,18 @@ export class AnalyticsService {
     
     // Calculate streaks
     for (let i = 0; i < sortedDays.length; i++) {
+      const currentDay = sortedDays[i];
+      if (!currentDay) continue;
+      
       if (i === 0) {
         currentStreak = 1;
-        currentStreakStart = sortedDays[i].date;
+        currentStreakStart = currentDay.date;
       } else {
-        const prevDate = new Date(sortedDays[i - 1].date);
-        const currentDate = new Date(sortedDays[i].date);
+        const prevDay = sortedDays[i - 1];
+        if (!prevDay) continue;
+        
+        const prevDate = new Date(prevDay.date);
+        const currentDate = new Date(currentDay.date);
         const diffDays = (currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
         
         if (diffDays === 1) {
@@ -385,7 +391,7 @@ export class AnalyticsService {
             longestStreak = currentStreak;
           }
           currentStreak = 1;
-          currentStreakStart = sortedDays[i].date;
+          currentStreakStart = currentDay.date;
         }
       }
     }
@@ -396,8 +402,9 @@ export class AnalyticsService {
     }
     
     // Determine if current streak is active
-    const lastActivityDate = sortedDays[sortedDays.length - 1].date;
-    const isActive = lastActivityDate === today || lastActivityDate === yesterday;
+    const lastDay = sortedDays[sortedDays.length - 1];
+    const lastActivityDate = lastDay?.date;
+    const isActive = lastActivityDate ? (lastActivityDate === today || lastActivityDate === yesterday) : false;
     
     return {
       currentStreak: isActive ? currentStreak : 0,
