@@ -98,7 +98,6 @@ export class AnalyticsService {
       
       const allTransactions: Transaction[] = [];
       let page = 1;
-      const maxOffset = 10000; // Maximum per page
       
       // Fetch multiple pages to get complete history
       while (true) {
