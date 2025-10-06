@@ -293,7 +293,7 @@ export class AnalyticsService {
     transactions.forEach(tx => {
       const date = new Date(tx.timestamp * 1000).toISOString().split('T')[0];
       
-      if (!dailyMap.has(date)) {
+      if (date && !dailyMap.has(date)) {
         dailyMap.set(date, {
           date,
           transactionCount: 0,
@@ -303,10 +303,14 @@ export class AnalyticsService {
         });
       }
       
-      const daily = dailyMap.get(date)!;
-      daily.transactionCount++;
-      daily.totalValue += tx.value;
-      daily.gasSpent += tx.gasUsed * tx.gasPrice;
+      if (date) {
+        const daily = dailyMap.get(date);
+        if (daily) {
+          daily.transactionCount++;
+          daily.totalValue += tx.value;
+          daily.gasSpent += tx.gasUsed * tx.gasPrice;
+        }
+      }
     });
     
     return Array.from(dailyMap.values()).sort((a, b) => b.date.localeCompare(a.date));
