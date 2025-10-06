@@ -410,7 +410,7 @@ export class AnalyticsService {
       currentStreak: isActive ? currentStreak : 0,
       longestStreak,
       streakStart: isActive ? currentStreakStart : null,
-      streakEnd: isActive ? lastActivityDate : null,
+      streakEnd: isActive && lastActivityDate ? lastActivityDate : null,
       isActive,
     };
   }
@@ -474,11 +474,18 @@ export class AnalyticsService {
       const firstTx = transactions[transactions.length - 1];
       const lastTx = transactions[0];
 
+      // Helper function to safely get date string
+      const getDateString = (timestamp: number): string => {
+        const dateStr = new Date(timestamp * 1000).toISOString();
+        const parts = dateStr.split('T');
+        return parts[0] || dateStr;
+      };
+
       const result = {
         address: checksumAddress,
         totalTransactions: transactions.length,
-        firstTransactionDate: firstTx ? new Date(firstTx.timestamp * 1000).toISOString().split('T')[0] : null,
-        lastTransactionDate: lastTx ? new Date(lastTx.timestamp * 1000).toISOString().split('T')[0] : null,
+        firstTransactionDate: firstTx ? getDateString(firstTx.timestamp) : null,
+        lastTransactionDate: lastTx ? getDateString(lastTx.timestamp) : null,
         totalValueTransferred: totalValue,
         totalGasSpent,
         averageGasPrice: transactions.length > 0 ? 
@@ -493,8 +500,8 @@ export class AnalyticsService {
         ethBalance,
         lastUpdated: Date.now(),
         analysisRange: {
-          from: firstTx ? new Date(firstTx.timestamp * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          to: new Date().toISOString().split('T')[0],
+          from: firstTx ? getDateString(firstTx.timestamp) : getDateString(Date.now() / 1000),
+          to: getDateString(Date.now() / 1000),
         },
       };
 

@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     // In our case, we're using the `getUrlHost` function to get the domain of the request
     // based on the Vercel environment. This will vary depending on your hosting provider.
     const payload = await client.verifyJwt({
-      token: authorization.split(" ")[1] as string,
+      token: authorization.split(" ")[1] || '',
       domain: getUrlHost(request),
     });
 
